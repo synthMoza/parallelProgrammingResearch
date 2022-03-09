@@ -69,11 +69,11 @@ int main(int argc, char* argv[])
 		
 		// Send data to calculate
 		int n = 0;
-		for (int i = 0; i < commsize - 1; ++i)
-		{
-			n = (N - (i + 1)) / commsize + 1;
-			MPI_Send(&n , 1, MPI_INTEGER, i + 1, MSG_TAG, MPI_COMM_WORLD);
-		}
+		//for (int i = 0; i < commsize - 1; ++i)
+		//{
+		//	n = (N - (i + 1)) / commsize + 1;
+		//	MPI_Send(&n , 1, MPI_INTEGER, i + 1, MSG_TAG, MPI_COMM_WORLD);
+		//}
 
 		// Calculate its part
 		n = (N - commsize) / commsize + 1;
@@ -103,10 +103,11 @@ int main(int argc, char* argv[])
 	else
 	{
 		// Wait for data to calculate
-		int n = 0;
-		MPI_Recv(&n, 1, MPI_INTEGER, 0, MSG_TAG, MPI_COMM_WORLD, &status);
+		// int n = 0;
+		// MPI_Recv(&n, 1, MPI_INTEGER, 0, MSG_TAG, MPI_COMM_WORLD, &status);
+		int n = (N - my_rank) / commsize + 1;
 		#ifdef DEBUG
-		LOG_INT(my_rank, "got value n that equals", n);	
+		LOG_INT(my_rank, "have value n that equals", n);	
 		#endif
 		float result = prefixSum(my_rank, commsize, n);
 		#ifdef DEBUG
