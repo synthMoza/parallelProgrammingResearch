@@ -29,7 +29,7 @@ while (0)							\
 // 1 / start + 1 / (start + step) + ... + 1 / (start + step * n)
 float prefixSum(float start, float step, int n)
 {
-	if (start <= 0 || step <= 0 || n <= 0)
+	if (start <= 0 || step <= 0 || n < 0)
 	{
 		return EXIT_FAILURE;
 	}
@@ -62,26 +62,23 @@ int main(int argc, char* argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &commsize);
 	
+	int n = 0;
+	if (my_rank + 1 <= N)
+		n = (N - my_rank - 1) / commsize + 1;
+	
+	#ifdef DEBUG
+	LOG_INT(my_rank, "have n that equals", n);
+	#endif
+	float result = prefixSum(my_rank + 1, commsize, n);
+	#ifdef DEBUG
+	LOG_REAL(my_rank, "temp result is", result);
+	#endif
+
 	if (my_rank == 0)
 	{
 		// START TIME
 		// float t1 = MPI_Wtime();
 		
-		// Send data to calculate
-		int n = 0;
-		//for (int i = 0; i < commsize - 1; ++i)
-		//{
-		//	n = (N - (i + 1)) / commsize + 1;
-		//	MPI_Send(&n , 1, MPI_INTEGER, i + 1, MSG_TAG, MPI_COMM_WORLD);
-		//}
-
-		// Calculate its part
-		n = (N - commsize) / commsize + 1;
-		float result = prefixSum(commsize, commsize, n);
-		#ifdef DEBUG
-		LOG_REAL(my_rank, "temp result is", result);		
-		#endif
-
 		// Receive all results
 		float tmp = 0;
 		for (int i = 1; i < commsize; ++i)
@@ -102,17 +99,6 @@ int main(int argc, char* argv[])
 	}	
 	else
 	{
-		// Wait for data to calculate
-		// int n = 0;
-		// MPI_Recv(&n, 1, MPI_INTEGER, 0, MSG_TAG, MPI_COMM_WORLD, &status);
-		int n = (N - my_rank) / commsize + 1;
-		#ifdef DEBUG
-		LOG_INT(my_rank, "have value n that equals", n);	
-		#endif
-		float result = prefixSum(my_rank, commsize, n);
-		#ifdef DEBUG
-		LOG_REAL(my_rank, "temp result is", result);
-		#endif
 		MPI_Send(&result, 1, MPI_FLOAT, 0, MSG_TAG, MPI_COMM_WORLD);		
 	}	
 
