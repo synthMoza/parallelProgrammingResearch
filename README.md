@@ -77,3 +77,17 @@ Thread[1]: Modified value of message is 2
 Thread[2]: Modified value of message is 3
 ...
 ```
+## Task 1
+### Calculate exponent, variant 1
+Given N as an argument - number of members to calculate using exponent Taylor series, calculate the value of e constant.
+```
+Given argument: N = 894967295
+Result: e = 2.7182818284590452354
+```
+
+Time measurement:
+
+- 4 threads - 16.6 seconds
+- 3 threads - 17.9 seconds
+- 2 threads - 20.7 seconds
+- 1 thread  - 38.2 seconds
