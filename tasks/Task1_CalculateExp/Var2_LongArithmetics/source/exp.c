@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
 	end = MPI_Wtime();
 	if (myRank == 0)
 	{
-		printf("Runtime = %g\n", end - start);
+		printf("Runtime = %g s\n", end - start);
 	}
 
 	mpf_clear(result);
