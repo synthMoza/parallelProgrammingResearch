@@ -91,3 +91,16 @@ Time measurement:
 - 3 threads - 17.9 seconds
 - 2 threads - 20.7 seconds
 - 1 thread  - 38.2 seconds
+### Calculate exponent, variant 2
+Given N as an argument - number of digits after the comma to be calculated, calculate the value of e constant.
+```
+Result: e = 2.718281828459045235360287471352662497757247093699959574966967627724...
+Runtime = 32.2859 s
+```
+Time measurement (million digits):
+
+- 4 threads - 58.6 seconds
+- 8 threads - 42.1 seconds
+- 12 threads - 36.8 seconds
+- 16 threads - 34.3 seconds
+- 20 threads - 32.4 seconds
