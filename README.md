@@ -110,4 +110,5 @@ Solve the transport equation using one of availible calculation schemes (the imp
 
 
 <img src="https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/core_time.png" width="585" height="415">
+
 ![image](https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/calc_to_true_comparison.gif)
