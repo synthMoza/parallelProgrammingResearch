@@ -1,7 +1,7 @@
 # About
 This repository contains tasks and their solutions from the Parallel Programming MIPT course.
 # Structure
-All tasks and their solution are located in the folder ```tasks```. Eack folder name is ```Task#_<name>```, where ```#``` is the number of the task, ```name``` is the brief name of the task. Each task folder has two internal folders - ```out``` and ```source```. ```source``` contains all source files written on C using MPI library, ```out``` folder contains ```Makefile``` for compilation and ```job.sh``` - bash script for putting program in a queue (PBS TORQUE).
+All tasks and their solution are located in the folder ```tasks```. Eack folder name is ```Task/Lab#_<name>```, where ```#``` is the number of the task/lab, ```name``` is the brief name of the task. Each task folder has two internal folders - ```out``` and ```source```. ```source``` contains all source files written on C using MPI library, ```out``` folder contains ```Makefile``` for compilation and ```job.sh``` - bash script for putting program in a queue (PBS TORQUE).
 # Compiling and running
 To launch any task and see its result, type in the command line:
 ```
@@ -107,5 +107,7 @@ Time measurement (million digits):
 
 ## Lab 1 - Transport Equation
 Solve the transport equation using one of availible calculation schemes (the implemented one is "square"). Includes plots - comparing calculation result and the real solution, compare number of cores to execution time.
+
+
 <img src="https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/core_time.png" width="585" height="415">
 ![image](https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/calc_to_true_comparison.gif)
