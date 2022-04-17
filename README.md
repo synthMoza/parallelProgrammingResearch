@@ -104,3 +104,8 @@ Time measurement (million digits):
 - 12 threads - 36.8 seconds
 - 16 threads - 34.3 seconds
 - 20 threads - 32.4 seconds
+
+## Lab 1 - Transport Equation
+Solve the transport equation using one of availible calculation schemes (the implemented one is "square"). Includes plots - comparing calculation result and the real solution, compare number of cores to execution time.
+<img src="https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/core_time.png" width="585" height="415">
+![image](https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/calc_to_true_comparison.gif)
