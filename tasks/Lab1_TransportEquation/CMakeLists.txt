@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 project(transportEquationLab)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-O2")
 
 # Set variables with all files
 set(SOURCE_DIR source)
@@ -17,4 +18,4 @@ include_directories(${PROJECT_NAME} ${INCLUDE_DIR} ${MPI_INCLUDE_PATH})
 
 # Create executable and link lib
 add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS})
-target_link_libraries(${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} MPI::MPI_CXX)

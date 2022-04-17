@@ -43,8 +43,8 @@ int main(int argc, char* argv[])
 	}
 
 	// Mesh size
-	const std::size_t N = 1200;
-	const std::size_t J = 2400;
+	const std::size_t N = 1600;
+	const std::size_t J = 3200;
 
 	// Initialize MPI library
 	MPI_Init(&argc, &argv);
