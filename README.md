@@ -3,6 +3,7 @@ This repository contains tasks and their solutions from the Parallel Programming
 # Structure
 All tasks and their solution are located in the folder ```tasks```. Eack folder name is ```Task/Lab#_<name>```, where ```#``` is the number of the task/lab, ```name``` is the brief name of the task. Each task folder has two internal folders - ```out``` and ```source```. ```source``` contains all source files written on C using MPI library, ```out``` folder contains ```Makefile``` for compilation and ```job.sh``` - bash script for putting program in a queue (PBS TORQUE).
 # Compiling and running
+## MPI
 To launch any task and see its result, type in the command line:
 ```
 cd tasks/Task#_<name>/out
@@ -22,9 +23,18 @@ Thread[3]: Modified value of message is 4
 Thread[4]: Modified value of message is 5
 ...
 ```
+## Posix Threads
+To launch any task and see its result, type in the command line:
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
 # List of tasks
 ## Task 0
-### Hello World
+### Hello World (MPI)
 Each thread must print its rank and communicator size.
 ```
 Communicator size = 28
@@ -53,7 +63,7 @@ Communicator size = 28
 My rank = 25
 ...
 ```
-### Harmonic Series
+### Harmonic Series (MPI)
 Given number N as an command argument, calculate the harmonic series up to Nth term.
 ```
 ===========================
@@ -62,7 +72,7 @@ Given number N as an command argument, calculate the harmonic series up to Nth t
         RESULT: 12.0901
 ===========================
 ```
-### Proxy
+### Proxy (MPI)
 Some thread (let's call it the first one) has to initialize some message (string or number) and send to the next thread, which has to modify it somehow and send it next. The last one has to return it to the first one. Each thread has to log all receives and sends.
 ```
 Thread[1]: Modified value of message is 2
@@ -78,7 +88,7 @@ Thread[2]: Modified value of message is 3
 ...
 ```
 ## Task 1
-### Calculate exponent, variant 1
+### Calculate exponent, variant 1 (MPI)
 Given N as an argument - number of members to calculate using exponent Taylor series, calculate the value of e constant.
 ```
 Given argument: N = 894967295
@@ -91,7 +101,7 @@ Time measurement:
 - 3 threads - 17.9 seconds
 - 2 threads - 20.7 seconds
 - 1 thread  - 38.2 seconds
-### Calculate exponent, variant 2
+### Calculate exponent, variant 2 (MPI)
 Given N as an argument - number of digits after the comma to be calculated, calculate the value of e constant.
 ```
 Result: e = 2.718281828459045235360287471352662497757247093699959574966967627724...
@@ -105,10 +115,21 @@ Time measurement (million digits):
 - 16 threads - 34.3 seconds
 - 20 threads - 32.4 seconds
 
-## Lab 1 - Transport Equation
+## Lab 1 - Transport Equation (MPI)
 Solve the transport equation using one of availible calculation schemes (the implemented one is "square"). Includes plots - comparing calculation result and the real solution, compare number of cores to execution time.
 
 
 <img src="https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/core_time.png" width="585" height="415">
 
 ![image](https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab1_TransportEquation/calc_to_true_comparison.gif)
+## Lab 2 - Integral Calculation (Posix Threads)
+Calculate integral of f(x) = sin(1/x) from some small posiive number to some big positive number (for example, [0.015, 1e6]). Thread must waste equal time and use dynamic step while calculating. Example output:
+```
+Thread 0x7efee8e93700: took 7.271794 sec
+Thread 0x7efee8692700: took 7.386910 sec
+Thread 0x7efee7e91700: took 7.589306 sec
+Thread 0x7efee9694700: took 7.744253 sec
+Number of threads: 4
+Result: 14.2385
+```
+<img src="https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab2_IntegralCalculation/core_time.png" width="585" height="415">
