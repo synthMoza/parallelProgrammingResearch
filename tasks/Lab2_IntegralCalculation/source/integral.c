@@ -54,7 +54,7 @@ double integrate(double a, double b) {
 
     // Last iteration with b
     x -= step;
-    result += 0.5 * (function(b) + function(x)) * step;
+    result += 0.5 * (function(b) + function(x)) * (b - x);
 
     if (result > -eps && result < eps)
         result = 0;

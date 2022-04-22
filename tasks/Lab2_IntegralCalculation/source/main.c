@@ -13,8 +13,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const double a = 0.015;
-    const double b = 1e6;
+    const double a = 0.05;
+    const double b = 10;
     result = thread_integrate(a, b, num_threads);
 
     printf("Number of threads: %ld\n", num_threads);
