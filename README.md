@@ -133,3 +133,16 @@ Number of threads: 4
 Result: 14.2385
 ```
 <img src="https://github.com/synthMoza/parallelProgrammingResearch/blob/master/tasks/Lab2_IntegralCalculation/core_time.png" width="585" height="415">
+
+## Task 2
+
+### Parallel Sorting (Posix Threads)
+
+Use some parallel algorithm to sort the given array. This implementation uses quick sort on ```n``` parts of the given array, where ```n``` is the number of threads, and then merges them (like in merge sort). Script generates random arrays, uses several seeds and array size, plots 3D graphic to show acceleration. Program takes number of threads as an argument, and filename as an optional argument (if no file provided - print the array to stdout). Then program takes array size and array itself. Example:
+
+```
+./parallelSort 5 output.txt
+6 3 -4 2 0 5 1
+cat output.txt
+-4 0 1 2 3 5
+```
