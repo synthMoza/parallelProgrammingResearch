@@ -33,7 +33,7 @@ def main():
     print('Successfuly read JSON data!')
 
     for benchName in benchmarkNames:        
-        print('Current benchmark; ' + benchName)
+        print('Current benchmark: ' + benchName)
 
         benchCPUtime = np.array([])
         benchSizes = np.array([])
@@ -61,7 +61,7 @@ def main():
             acc = np.ones(len(benchCPUtime)) * benchCPUtime[0] / benchCPUtime
             print(acc)
 
-            print('Effeciency for each iteration:')
+            print('Efficiency for each iteration:')
             print(acc / benchSizes)
 
 
