@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
-#include <vector>
 
 // Сгенерировать массив с элементами, равными индексам
 template <size_t size>
@@ -31,34 +30,61 @@ inline void PrintArray(It begin, It end)
     std::cout << std::endl;
 }
 
-// Получить значение для элемента массива под данным номером (формула напрямую из задания)
-template <size_t size>
-inline uint64_t GetValue(std::array<uint64_t, size>& array, size_t index)
-{
-    if (index == 0)
-        return array.at(index) * array.at(index + 1) / 3;
-    else if (index == array.size() - 1)
-        return array.at(index) * array.at(index - 1) / 3;
-    else
-        return array.at(index) * array.at(index + 1) * array.at(index - 1) / 3;
-}
-
 int main()
 {
     constexpr size_t arraySize = 1e5;
 
     auto a = GetInitializedArray<arraySize>();
-    std::array<uint64_t, arraySize> b;
+    auto maxThreads = omp_get_max_threads();
 
-    #pragma omp parallel shared(a, b)
+    uint64_t cache = 0;
+    #pragma omp parallel shared(a, cache)
     {
-        #pragma omp for schedule(guided)
-        for (size_t i = 0; i < arraySize; ++i)
-            b[i] = GetValue(a, i);
+        auto threadId = omp_get_thread_num();
+        uint64_t temp = 0;
+
+        // Каждый поток итерируется по массиву с шагом maxThreads
+        for (size_t i = 0; i < arraySize; i += maxThreads)
+        {
+            // Распределяем текущий промежуток итераций между всеми потоками
+            auto end = std::min(i + maxThreads, arraySize);
+            
+            #pragma omp for schedule(static, 1)
+            for (size_t j = i; j < end; ++j)
+            {
+                // Считаем новое значение, пока храним во временной переменной
+                if (j == 0)
+                {
+                    temp = a.at(j) * a.at(j + 1) / 3;
+                }
+                else if (j == arraySize - 1)
+                {
+                    temp = a.at(j) * a.at(j - 1) / 3;
+                }
+                else
+                {
+                    if (threadId == 0)
+                        temp = a.at(j) * cache * a.at(j + 1) / 3;
+                    else
+                        temp = a.at(j) * a.at(j - 1) * a.at(j + 1) / 3;
+                }
+            } // sync
+            
+            // Сохраняем последнее значение для следующей итерации
+            if (threadId == maxThreads - 1 && end != arraySize)
+                cache = a.at(i + threadId);
+
+            // Можем безопасно записывать новое значение
+            if (i + threadId < arraySize)
+                a.at(i + threadId) = temp;
+
+            // Синхронизируемся, чтобы кэш успел быть записан
+            #pragma omp barrier
+        }
     }
 
     std::cout << "Modified array:" << std::endl;
-    PrintArray(b.begin(), b.end());
+    PrintArray(a.begin(), a.end());
 
     return EXIT_SUCCESS;
 }
