@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.16)
+project(bugged)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_C_FLAGS "-Wall -Wextra")
+set(CMAKE_C_FLAGS_DEBUG "-g")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
+
+set(SOURCE_DIR source)
+
+add_executable(${PROJECT_NAME}_1 ${SOURCE_DIR}/bugged1.c)
+add_executable(${PROJECT_NAME}_2 ${SOURCE_DIR}/bugged2.c)
+add_executable(${PROJECT_NAME}_3 ${SOURCE_DIR}/bugged3.c)
+add_executable(${PROJECT_NAME}_4 ${SOURCE_DIR}/bugged4.c)
+add_executable(${PROJECT_NAME}_5 ${SOURCE_DIR}/bugged5.c)
+add_executable(${PROJECT_NAME}_6 ${SOURCE_DIR}/bugged6.c)
+
+message(STATUS "Looking for OpenMP library...")
+find_package(OpenMP)
+if(OpenMP_C_FOUND)
+    target_link_libraries(${PROJECT_NAME}_1 PUBLIC OpenMP::OpenMP_C)
+    target_link_libraries(${PROJECT_NAME}_2 PUBLIC OpenMP::OpenMP_C)
+    target_link_libraries(${PROJECT_NAME}_3 PUBLIC OpenMP::OpenMP_C)
+    target_link_libraries(${PROJECT_NAME}_4 PUBLIC OpenMP::OpenMP_C)
+    target_link_libraries(${PROJECT_NAME}_5 PUBLIC OpenMP::OpenMP_C)
+    target_link_libraries(${PROJECT_NAME}_6 PUBLIC OpenMP::OpenMP_C)
+else()
+    message(FATAL_ERROR "Can't find OpenMP library!")
+endif()
