@@ -18,7 +18,10 @@ int main()
     // Set lambdas that will do write/read work
     auto writeWork = [](buffer_t& buffer, int threadId){
         for (auto i = 0; i < symbolsToWrite; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             buffer[i] = static_cast<char>(threadId) + '0';
+        }
     };
 
     auto readWork = [](const buffer_t& buffer, int threadId){
@@ -26,7 +29,10 @@ int main()
         outputFile.open("output_thread" + std::to_string(threadId) + ".txt");
 
         for (auto i = 0; i < symbolsToWrite; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             outputFile << buffer[i];
+        }
     };
 
     // Launch threads that will write to the buffer
