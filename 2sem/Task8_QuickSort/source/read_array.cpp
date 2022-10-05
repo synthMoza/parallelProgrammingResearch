@@ -37,5 +37,8 @@ ArrayType util::GetInputArray(char* argv[])
         throw std::runtime_error("Unknown input flags");
     }
 
+    if (result.empty())
+        throw std::runtime_error("Empty array");
+
     return result;
 }
