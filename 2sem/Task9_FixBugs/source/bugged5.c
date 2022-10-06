@@ -41,18 +41,23 @@ int main (int argc, char *argv[])
 
         #pragma omp sections nowait
         {
+            /*
+                Прежде чем пытаться забрать замок соседа, поток
+                должен освободить свой - поэтому возникает типичный дедлок
+            */
             #pragma omp section
             {
                 omp_set_lock(&locka);
                 printf("Thread %d updating a[]\n", tid);
                 for (i = 0; i < N; i++)
                     a[i] += DELTA * i;
+                omp_unset_lock(&locka);
                 omp_set_lock(&lockb);
                 printf("Thread %d updating b[]\n", tid);
                 for (i = 0; i < N; i++)
                     b[i] += DELTA + i;
                 omp_unset_lock(&lockb);
-                omp_unset_lock(&locka);
+                // omp_unset_lock(&locka);
             }
 
             #pragma omp section
@@ -61,12 +66,13 @@ int main (int argc, char *argv[])
                 printf("Thread %d updating b[]\n", tid);
                 for (i = 0; i < N; i++)
                     b[i] += PI * i;
+                omp_unset_lock(&lockb);
                 omp_set_lock(&locka);
                 printf("Thread %d adding b[] to a[]\n", tid);
                 for (i = 0; i < N; i++)
                     a[i] += PI + i;
                 omp_unset_lock(&locka);
-                omp_unset_lock(&lockb);
+                // omp_unset_lock(&lockb);
             }
         }
     }

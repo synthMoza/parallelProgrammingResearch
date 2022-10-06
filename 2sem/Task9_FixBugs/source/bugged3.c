@@ -2,6 +2,8 @@
 * ЗАДАНИЕ: bugged3.c
 * ОПИСАНИЕ:
 *   Ошибка времени выполнения.
+*   Программа построена с целью параллельного вычисления суммы и произведения
+*   двух матриц с демонстрацией механизма sections.
 ******************************************************************************/
 
 #include <omp.h>
@@ -32,7 +34,7 @@ int main (int argc, char **argv)
         printf("Thread %d starting...\n", tid);
         #pragma omp barrier
 
-        #pragma omp sections nowait
+        #pragma omp sections // nowait
         {
             #pragma omp section
             {
@@ -50,7 +52,8 @@ int main (int argc, char **argv)
                 print_results(c, tid, section);
             }
         }
-
+        
+        printf("Thread %d done and synchronized.\n", tid);
         #pragma omp barrier
         printf("Thread %d exiting...\n",tid);
     }
@@ -77,6 +80,12 @@ void print_results(float array[N], int tid, int section)
         printf("\n");
     }
 
-    #pragma omp barrier
-    printf("Thread %d done and synchronized.\n", tid); 
+    /*
+        Барьер работает на все потоки, но в эту функцию заходит только 
+        два потока - надо синхронизироваться по-другому. Можно, например,
+        просто перенести этот printf после #pragma omp sections, убрав оттуда
+        предварительно аттрибут nowait, чтобы была синхронизация потоков в конце 
+        параллельного блока
+    */
+    // #pragma omp barrier
 }
