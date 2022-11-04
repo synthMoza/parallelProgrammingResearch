@@ -1,5 +1,6 @@
 # About
 This repository contains tasks and their solutions from the Parallel Programming MIPT course.
+
 # Structure
 All tasks and their solution are located in the folder ```tasks```. Eack folder name is ```Task/Lab#_<name>```, where ```#``` is the number of the task/lab, ```name``` is the brief name of the task. Each task folder has two internal folders - ```out``` and ```source```. ```source``` contains all source files written on C using MPI library, ```out``` folder contains ```Makefile``` for compilation and ```job.sh``` - bash script for putting program in a queue (PBS TORQUE).
 # Compiling and running
