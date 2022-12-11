@@ -1,0 +1,20 @@
+Mutex Stack
+50/50 push/pop; number of threads: 1, average time to perform op: 1213 ns, maximum time to perform op: 37295 ns
+50/50 push/pop; number of threads: 2, average time to perform op: 1459 ns, maximum time to perform op: 41136 ns
+50/50 push/pop; number of threads: 3, average time to perform op: 1463 ns, maximum time to perform op: 58526 ns
+50/50 push/pop; number of threads: 4, average time to perform op: 1645 ns, maximum time to perform op: 70539 ns
+50/50 push/pop; number of threads: 5, average time to perform op: 1642 ns, maximum time to perform op: 101897 ns
+50/50 push/pop; number of threads: 6, average time to perform op: 1937 ns, maximum time to perform op: 652868 ns
+50/50 push/pop; number of threads: 7, average time to perform op: 2131 ns, maximum time to perform op: 1699008 ns
+50/50 push/pop; number of threads: 8, average time to perform op: 2316 ns, maximum time to perform op: 1042857 ns
+50/50 push/pop; number of threads: 9, average time to perform op: 2532 ns, maximum time to perform op: 3887737 ns
+Lock Free Stack
+50/50 push/pop; number of threads: 1, average time to perform op: 1238 ns, maximum time to perform op: 19695 ns
+50/50 push/pop; number of threads: 2, average time to perform op: 1437 ns, maximum time to perform op: 87300 ns
+50/50 push/pop; number of threads: 3, average time to perform op: 1425 ns, maximum time to perform op: 87580 ns
+50/50 push/pop; number of threads: 4, average time to perform op: 1536 ns, maximum time to perform op: 210429 ns
+50/50 push/pop; number of threads: 5, average time to perform op: 1481 ns, maximum time to perform op: 23606 ns
+50/50 push/pop; number of threads: 6, average time to perform op: 1451 ns, maximum time to perform op: 79688 ns
+50/50 push/pop; number of threads: 7, average time to perform op: 1449 ns, maximum time to perform op: 71167 ns
+50/50 push/pop; number of threads: 8, average time to perform op: 1463 ns, maximum time to perform op: 109370 ns
+50/50 push/pop; number of threads: 9, average time to perform op: 1468 ns, maximum time to perform op: 220835 ns
