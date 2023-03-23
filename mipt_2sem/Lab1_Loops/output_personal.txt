@@ -1,0 +1,56 @@
+1
+Ellapsed time: 21.792 s
+2
+Ellapsed time: 17.2583 s
+3
+Ellapsed time: 12.7821 s
+4
+Ellapsed time: 8.92069 s
+5
+Ellapsed time: 9.59605 s
+6
+Ellapsed time: 8.91484 s
+7
+Ellapsed time: 7.88056 s
+8
+Ellapsed time: 7.64538 s
+9
+Ellapsed time: 10.301 s
+10
+Ellapsed time: 7.95086 s
+11
+Ellapsed time: 8.02692 s
+12
+Ellapsed time: 7.20352 s
+13
+Ellapsed time: 6.78036 s
+14
+Ellapsed time: 8.04974 s
+15
+Ellapsed time: 6.4978 s
+16
+Ellapsed time: 8.29868 s
+17
+Ellapsed time: 8.33388 s
+18
+Ellapsed time: 6.41527 s
+19
+Ellapsed time: 6.00733 s
+20
+Ellapsed time: 6.31838 s
+21
+Ellapsed time: 6.45179 s
+22
+Ellapsed time: 6.41849 s
+23
+Ellapsed time: 6.14383 s
+24
+Ellapsed time: 7.65873 s
+25
+Ellapsed time: 5.95736 s
+26
+Ellapsed time: 7.77193 s
+27
+Ellapsed time: 5.93254 s
+28
+Ellapsed time: 7.32695 s
