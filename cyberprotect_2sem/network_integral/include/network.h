@@ -22,7 +22,7 @@
 
 #include <integral.h>
 #include <input.h>
-#include <cvector.h>
+#include <deque.h>
 
 #define check_error_return(ret)                 \
 do {                                            \
@@ -55,18 +55,6 @@ do {                                            \
 // Broadcast message
 #define BR_MSG "BRMSG"
 
-// Structure that describes data to be sent to each computer
-// @param a the start of the length to integrate on
-// @param b the end of the length to integrate on
-// @param nthreads the amount of threads to launch
-typedef struct task 
-{
-    double a;
-    double b;
-} task_t;
-
-typedef vector_define(task_t) task_vec_t;
-
 typedef enum
 {
     STATE_NONE,
@@ -76,7 +64,7 @@ typedef enum
 } node_state_t;
 
 // Each node has assosiated values:
-// - vector of tasks to be perfomed, we don't need to store result as it always being added to the sum
+// - deque of tasks to be perfomed, we don't need to store result as it always being added to the sum
 // - nreceive_tasks - how many tasks we need to receive from this node
 // - socket to taslk to the node
 // - threads - how many threads this node has
@@ -84,10 +72,9 @@ typedef enum
 typedef struct node
 {
     int socket;
-    int threads;
+    long threads;
     node_state_t state;
-    task_vec_t tasks;
-    int nreceive_tasks;
+    deque_t* tasks;
 } node_t;
 
 #endif // #define NETWORK_H

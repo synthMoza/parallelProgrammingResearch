@@ -1,10 +1,6 @@
 #include <errno.h>
 #include <network.h>
 
-// The length to integrate on
-const int integrate_a = 1;
-const int integrate_b = 10e7;
-
 int sktcp_keepalive(int sk_tcp) 
 {
     if (sk_tcp <= 0)
@@ -20,7 +16,7 @@ int sktcp_keepalive(int sk_tcp)
     int interval = 1;
     check_error_return(setsockopt(sk_tcp, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval)));
     
-    int maxpkt = 10;
+    int maxpkt = 3;
     check_error_return(setsockopt(sk_tcp, IPPROTO_TCP, TCP_KEEPCNT, &maxpkt, sizeof(maxpkt)));
 
     return 0;
@@ -34,7 +30,7 @@ void destroy_node(node_t* node)
     if (node->socket != 0)
         close(node->socket);
     
-    vector_destroy(&node->tasks);
+    deque_destroy(node->tasks);
 }
 
 static int get_udp_socket()
@@ -95,7 +91,7 @@ static int accept_clients(int sk_tcp, struct sockaddr_in* tcp_addr, long ncomp, 
 {
     // Accept all computers and recv their socket information
     long naccepted = 0; // accepted computers
-    int nthrecv = 0; // receive threads
+    long nthrecv = 0; // receive threads
 
     while (1)
     {
@@ -133,7 +129,7 @@ static int accept_clients(int sk_tcp, struct sockaddr_in* tcp_addr, long ncomp, 
             nodes[naccepted].state = STATE_OK;
 
             // Send a message to the console
-            printf("Accepted new computer! Number: %ld\n", naccepted++);
+            printf("Accepted new node! Number: %ld\n", naccepted++);
         }
 
         for (int i = 0; i < naccepted; ++i) 
@@ -146,7 +142,7 @@ static int accept_clients(int sk_tcp, struct sockaddr_in* tcp_addr, long ncomp, 
                     return -1;
 
                 nthrecv++;
-                printf("Number of threads: %d\n", nodes[i].threads);
+                printf("Node %d number of threads: %ld\n", i, nodes[i].threads);
             }
         }
     }
@@ -160,10 +156,9 @@ static int accept_clients(int sk_tcp, struct sockaddr_in* tcp_addr, long ncomp, 
     return 0;
 }
 
-static void print_task(const task_t* task)
+static void print_task(const task_t* task, int i)
 {
-    printf("task.a = %g\n", task->a);
-    printf("task.b = %g\n", task->b);
+    printf("Node %d, task dump: a = %g, b = %g\n", i, task->a, task->b);
 }
 
 // count all nodes tasks and return this value
@@ -172,16 +167,33 @@ static int count_all_tasks(const node_t* nodes, long ncomp)
     int count = 0;
     for (long i = 0; i < ncomp; ++i)
         if (nodes[i].state == STATE_OK)
-            count += nodes[i].nreceive_tasks;
+        {
+            count += deque_size(nodes[i].tasks); // to receive
+        }
     
-
     return count;
+}
+
+// send task. if it fails, mark node as timeout and wait for another redistribution
+static int send_task(node_t* nodes, task_t* task, int i)
+{
+    if (send(nodes[i].socket, task, sizeof(*task), 0) != sizeof(*task))
+    {
+        printf("Failed to send new task to node %d\n", i);
+
+        nodes[i].state = STATE_TIMEOUT;
+        printf("Node %d has been marked as timeout\n", i);
+        
+        return -1;
+    }
+
+    return 0;
 }
 
 static int create_tasks(node_t* nodes, double a, double b, int ncomp)
 {
     // count threads of alive nodes
-    int sum = 0;
+    long sum = 0;
     for (int i = 0; i < ncomp; ++i)
         if (nodes[i].state == STATE_OK)
             sum += nodes[i].threads;
@@ -196,8 +208,16 @@ static int create_tasks(node_t* nodes, double a, double b, int ncomp)
     {
         prev_task.a = a;
         prev_task.b = a + nodes[0].threads * diff;
-        vector_push_back(&nodes[0].tasks, prev_task);
-        print_task(&prev_task);
+
+        if (deque_push_back(nodes[0].tasks, prev_task) < 0)
+            return -1;
+        print_task(&prev_task, 0);
+
+        send_task(nodes, &prev_task, 0);
+    }
+    else
+    {
+        prev_task.b = a;
     }
     
     for (int i = 1; i < ncomp; ++i)
@@ -206,96 +226,22 @@ static int create_tasks(node_t* nodes, double a, double b, int ncomp)
         {
             task_t task = {
                 .a = prev_task.b,
-                .b = a + nodes[i].threads * diff
+                .b = prev_task.b + nodes[i].threads * diff
             };
 
-            print_task(&task);
             prev_task.b = task.b;
+            if (deque_push_back(nodes[i].tasks, task) < 0)
+                return -1;
+            print_task(&task, i);
+
+            send_task(nodes, &task, i);
         }
     }
     
     return 0;
 }
 
-static int receive_results(int* sk_cl, long ncomp, double* result)
-{
-    int ret_code = 0;
-
-    // Accept all results
-    int* received = (int*) calloc(ncomp, sizeof(*received));
-    check_zero_return(received);
-
-    int nreceived = 0;
-    while(1)
-    {
-        if (nreceived == ncomp)
-            break;
-        
-        fd_set fdset = {};
-        FD_ZERO(&fdset);
-
-        struct timeval timeval = {
-            .tv_usec = 0,
-            .tv_sec = 10
-        };
-
-        for (int i = 0; i < ncomp; ++i)
-        {
-            // Add all computers to the file set
-            if (received[i] == 0)
-                FD_SET(sk_cl[i], &fdset);
-        }
-
-        int ret = select(FD_SETSIZE, &fdset, NULL, NULL, &timeval);
-        if (ret < 0)
-        {
-            ret_code = -1;
-            goto exit_receive_results;
-        }
-
-        if (ret == 0)
-            break;
-
-        for (int i = 0; i < ncomp; ++i) 
-        {
-            if (FD_ISSET(sk_cl[i], &fdset)) 
-            {
-                double tmp = 0;
-
-                // Receive data from this client
-                printf("Computer %d is ready to send results\n", i);
-                ssize_t msgBytes = recv(sk_cl[i], &tmp, sizeof(tmp), 0);
-                if (msgBytes == 0)
-                {
-                    // Node died, we need to do several things:
-                    // 1) Don't expect it to reanimate from the dead, close connection imediately and remove from the waiting list
-                    // 2) This task still needs to be done - give it to another node? or distribute between alive nodes
-                }
-                else if (msgBytes != sizeof(tmp))
-                {
-                    printf("Received result size is wrong! Must be %ld, actual size - %ld\n", sizeof(tmp), msgBytes);
-                    ret_code = -1;
-                    goto exit_receive_results;
-                }
-
-                printf("Computer %d; Size: %u; Data: %g\n", i, ret, tmp);
-                received[i] = 1;
-                
-                nreceived++;
-                *result += tmp;
-            } 
-        }
-    }
-
-    if (ncomp != nreceived) 
-        ret_code = -1;
-
-exit_receive_results:
-    free(received);
-    return ret_code;
-}
-
-static int server_routine(long ncomp)
+static int server_routine(long ncomp, long a, long b)
 {
     int ret_code = 0;
 
@@ -310,9 +256,9 @@ static int server_routine(long ncomp)
         nodes[i].socket = 0;
         nodes[i].threads = 0;
         nodes[i].state = STATE_NONE;
-        vector_init(&nodes[i].tasks);
-        vector_reserve(&nodes[i].tasks, 1u);
-        nodes[i].nreceive_tasks = 0;
+        nodes[i].tasks = deque_get();
+        if (!nodes[i].tasks)
+            return -ENOMEM;
     }
 
     // Send broadcast message for cleints to discover server
@@ -346,65 +292,70 @@ static int server_routine(long ncomp)
     }
 
     // Create original tasks for nodes
-    create_tasks(nodes, integrate_a, integrate_b, ncomp);
+    create_tasks(nodes, a, b, ncomp);
 
     // Enter loop for managing all nodes
     double result = 0.0;
     do
     {
-        // Send all available tasks
+        // Receive all availible results
+        fd_set fdset = {};
+        FD_ZERO(&fdset);
+
+        int fdSize = 0;
         for (long i = 0; i < ncomp; ++i)
         {
-            if (nodes[i].state == STATE_OK)
+            if (deque_size(nodes[i].tasks) > 0 && nodes[i].state == STATE_OK)
             {
-                int isSendFailed = 0;
-                printf("Sending %ld tasks to node %ld\n", vector_size(&nodes[i].tasks), i);
-                
-                for (size_t j = 0; j < vector_size(&nodes[i].tasks); ++j)
-                {
-                    task_t task = vector_elem(&nodes[i].tasks, j);
-                    if (send(nodes[i].socket, &task, sizeof(task), 0) != sizeof(task))
-                    {
-                        printf("Failed to send task to node %ld\n", i);
-
-                        nodes[i].state = STATE_TIMEOUT;
-                        printf("Node %ld has been marked as timeout\n", i);
-                        
-                        isSendFailed = 1;
-                        break;
-                    }
-
-                    nodes[i].nreceive_tasks++;
-                }
-                
-                if (isSendFailed == 0)
-                {
-                    // all tasks has been sent, clear queue
-                    vector_clear(&nodes[i].tasks);
-                }
+                fdSize++;
+                FD_SET(nodes[i].socket, &fdset);
             }
         }
 
-        // Receive all availible results
-        for (long i = 0; i < ncomp; ++i)
+        if (fdSize > 0)
         {
-            if (nodes[i].state == STATE_OK)
+            int ret = select(FD_SETSIZE, &fdset, NULL, NULL, NULL);
+            if (ret < 0)
             {
-                printf("Receiving %d results from node %ld\n", nodes[i].nreceive_tasks, i);
-                while (nodes[i].nreceive_tasks > 0)
+                perror("Error while polling clients: ");
+                goto exit_server_routine;
+            }
+
+            if (ret != 0) // somebody wants to send something
+            {
+                for (long i = 0; i < ncomp; ++i)
                 {
-                    double tmpResult = 0.0;
-                    if (recv(nodes[i].socket, &tmpResult, sizeof(tmpResult), 0) != sizeof(tmpResult))
+                    if (FD_ISSET(nodes[i].socket, &fdset) && deque_size(nodes[i].tasks) > 0) // all nodes on set are already STATE_OK
                     {
-                        printf("Node %ld failed to send results\n", i);
+                        // receive results one by one, consider node is ready == only one result is ready
+                        printf("Receiving task result from node %ld\n", i);
 
-                        nodes[i].state = STATE_TIMEOUT;
-                        printf("Node %ld has been marked as timeout\n", i);
+                        double tmpResult = 0.0;
+                        ssize_t msgBytes = recv(nodes[i].socket, &tmpResult, sizeof(tmpResult), 0);
                         
-                        break;
-                    }
+                        if (msgBytes != sizeof(tmpResult))
+                        {
+                            printf("Node %ld failed to send results\n", i);
+                            printf("Required size: %ld, actual size %ld\n", sizeof(tmpResult), msgBytes);
 
-                    nodes[i].nreceive_tasks--;
+                            nodes[i].state = STATE_TIMEOUT;
+                            printf("Node %ld has been marked as timeout\n", i);
+                            
+                            break;
+                        }
+                        else
+                        {
+                            printf("Computer %ld; Size: %lu; Data: %g\n", i, msgBytes, tmpResult);
+                            result += tmpResult;
+
+                            if (deque_pop_front(nodes[i].tasks, NULL) < 0)
+                            {
+                                printf("Failed to receive tasks: deque error!\n");
+                                ret_code = -1;
+                                goto exit_server_routine;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -414,14 +365,34 @@ static int server_routine(long ncomp)
         {
             if (nodes[i].state == STATE_TIMEOUT)
             {
+                int tasksToRedistribute = deque_size(nodes[i].tasks);
                 printf("Redistributing node %ld tasks to everyone else\n", i);
-                for (size_t j = 0; j < vector_size(&nodes[i].tasks); ++j)
+                printf("Tasks to redistribute: %d\n", tasksToRedistribute);
+
+                size_t countAlive = 0;
+                for (long j = 0; j < ncomp; ++j)
+                    if (nodes[j].state == STATE_OK)
+                        countAlive++;
+                
+                if (countAlive == 0)
                 {
-                    task_t task = vector_elem(&nodes[i].tasks, j);
+                    printf("Failed to redistribute tasks, all nodes are dead!\n");
+                    ret_code = -1;
+                    goto exit_server_routine;
+                }
+
+                for (int j = 0; j < tasksToRedistribute; ++j)
+                {
+                    task_t task = {};
+                    if (deque_pop_back(nodes[i].tasks, &task) < 0)
+                    {
+                        printf("Failed to redistribute tasks, tasks queue error!\n");
+                        ret_code = -1;
+                        goto exit_server_routine;
+                    }
                     create_tasks(nodes, task.a, task.b, ncomp);
                 }
 
-                vector_clear(&nodes[i].tasks); // all tasks has been redistributed
                 nodes[i].state = STATE_DEAD;
                 printf("Node %ld has been marked as dead\n", i);
             }
@@ -429,18 +400,6 @@ static int server_routine(long ncomp)
     } 
     while(count_all_tasks(nodes, ncomp) > 0);
 
-    // Send data to all computers
-    // for (int i = 0; i < ncomp; ++i)
-    // {
-    //     if (send(sk_cl[i], &task[i], sizeof(task[i]), 0) != sizeof(task[i]))
-    //     {
-    //         ret_code = -ENOMEM;
-    //         goto exit_server_routine;
-    //     }
-    // }
-
-    // double result = 0;
-    // receive_results(sk_cl, ncomp, &result);
     printf("Result: %g\n", result);
 
 exit_server_routine:
@@ -453,9 +412,9 @@ exit_server_routine:
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2) 
+    if (argc != 4) 
     {
-        printf("Usage: ./%s <ncomp>\n", argv[0]);
+        printf("Usage: ./%s <ncomp> <start> <end>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -466,6 +425,13 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    check_error_return(server_routine(ncomp));
+    long a = 0, b = 0;
+    if (input(argv[2], &a) < 0 || input(argv[3], &b) < 0)
+    {
+        printf("Error! Wrong input values\n");
+        return -1;
+    }
+
+    check_error_return(server_routine(ncomp, a, b));
     return 0;
 }

@@ -26,12 +26,22 @@ add_executable(client ${SOURCE_DIR}/client.c ${INCLUDE})
 target_include_directories(client PRIVATE ${INCLUDE_DIR})
 target_link_libraries(client PRIVATE input integral m)
 
-add_executable(server ${SOURCE_DIR}/server.c ${INCLUDE})
+add_executable(server ${SOURCE_DIR}/server.c ${SOURCE_DIR}/deque.c ${INCLUDE})
 target_include_directories(server PRIVATE ${INCLUDE_DIR})
 target_link_libraries(server PRIVATE input integral)
 
 add_custom_command(
-        TARGET server POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tests/test.py
-                ${CMAKE_CURRENT_BINARY_DIR}/test.py)
+  TARGET server POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+          ${CMAKE_SOURCE_DIR}/tests/simple_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}/simple_test.sh)
+add_custom_command(
+  TARGET server POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+          ${CMAKE_SOURCE_DIR}/tests/crash_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}/crash_test.sh)
+add_custom_command(
+  TARGET server POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+          ${CMAKE_SOURCE_DIR}/tests/freeze_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}/freeze_test.sh)
