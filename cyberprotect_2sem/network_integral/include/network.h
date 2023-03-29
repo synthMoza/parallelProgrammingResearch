@@ -44,7 +44,7 @@ do {                                            \
 
 
 #define MAX_MSG_SIZE 128
-#define PORT 8760
+#define PORT 8762
 
 // The minimum amout of processors for debug
 #define MIN_PROC 4
