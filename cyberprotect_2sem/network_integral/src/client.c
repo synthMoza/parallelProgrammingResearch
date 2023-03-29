@@ -32,7 +32,7 @@ static int receive_ip_from_broadcast(struct sockaddr_in* client)
     // Wait for the server's message
     printf("Waiting for the server...\n");
     
-    char buf[MAX_MSG_SIZE];
+    char buf[MAX_MSG_SIZE] = {};
     socklen_t socklen = sizeof(client);
     check_error_return(recvfrom(sk_br, buf, sizeof(client->sin_addr.s_addr), 0, (struct sockaddr*) client, &socklen));
 
