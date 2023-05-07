@@ -5,24 +5,90 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
-	"sync"
+	"net/url"
 
 	"github.com/synthMoza/parallelProgrammingResearch/cyberprotect_2sem/distributed_system/node/common"
 )
 
 // HTTP server handlers
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Master: Got root request")
-	io.WriteString(w, "Consider this is a request of data, so there we'll deliever request to replicas")
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	common.InfoLogger.Printf("Master: Got %s request from %s\n", r.Method, r.RemoteAddr)
+
+	// Parse the URL
+	parsedURL, err := url.Parse(r.RequestURI)
+	if err != nil {
+		// Wrong url provided
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if r.Method == "GET" {
+		// Choose randomly to whom send this read request
+		replicaId := rand.Int() % s.ReplicasAmount
+		message := common.Command{
+			Type: common.Read,
+			Size: 0,
+			Path: parsedURL.Path,
+		}
+
+		// Send data to replica
+		// TODO: handle dead replicas, hold their status somewhere
+		common.InfoLogger.Printf("Master: sending read request to replica %d\n", replicaId)
+		encodedCommand := common.EncodeCommand(message)
+		_, err := s.replicasConnection[replicaId].Write(encodedCommand)
+		if err != nil {
+			common.ErrorLogger.Fatalf("Failed to send data to replica %d, considering it is dead", replicaId)
+			return
+		}
+
+		// Wait for answer
+		common.InfoLogger.Printf("Master: wait for reply from replica %d\n", replicaId)
+		_, err = s.replicasConnection[replicaId].Read(encodedCommand)
+		if err != nil {
+			common.ErrorLogger.Fatalf("Failed to receive results from replica %d, considering it is dead", replicaId)
+			return
+		}
+
+		// Receive read bytes
+		common.InfoLogger.Printf("Master: receive data from replica %d\n", replicaId)
+		message = common.DecodeCommand(encodedCommand)
+		if message.Size <= 0 {
+			// Some error occured
+			// TODO: include error in output
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		buffer := make([]byte, message.Size+1)
+		_, err = s.replicasConnection[replicaId].Read(buffer)
+		if err != nil {
+			common.ErrorLogger.Fatalf("Failed to receive results from replica %d, considering it is dead", replicaId)
+			return
+		}
+
+		io.WriteString(w, string(buffer))
+	} else if r.Method == "POST" {
+		// Broadcast write message to everyone
+		io.WriteString(w, "Request for file: "+parsedURL.Path)
+	} else {
+		// Unsupported method
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+type innerMasterCommand struct {
+	cmd  common.CommandType
+	size uint32
+	name string
+	data []byte
 }
 
 type Server struct {
-	ReplicasAmount int
-
+	ReplicasAmount     int
 	replicasConnection []*net.TCPConn
 }
 
@@ -54,48 +120,11 @@ func (s *Server) broadcastNetwork() error {
 	return nil
 }
 
-// Connect "replicasAmount" replicas via TCP
-func (s *Server) connectReplicas() error {
-	// Resolve TCP Address
-	address, err := net.ResolveTCPAddr("tcp", common.TCPPort)
-	if err != nil {
-		return err
-	}
-
-	// Start TCP Listener
-	listener, err := net.ListenTCP("tcp", address)
-	if err != nil {
-		return err
-	}
-
-	// Connect all replicas
-	connectedReplicasAmount := 0
-	for connectedReplicasAmount < s.ReplicasAmount {
-		// Accept connection
-		connection, err := listener.AcceptTCP()
-		if err != nil {
-			return err
-		}
-
-		// Enable Keepalives
-		err = connection.SetKeepAlive(true)
-		if err != nil {
-			return err
-		}
-
-		// Add to slice of replicas connections
-		s.replicasConnection = append(s.replicasConnection, connection)
-		connectedReplicasAmount++
-	}
-
-	return nil
-}
-
 func (s *Server) configureReplicas() error {
 	// Extract all addresses
 	replicasAddresses := make([]string, len(s.replicasConnection))
-	for _, connection := range s.replicasConnection {
-		replicasAddresses = append(replicasAddresses, connection.RemoteAddr().String())
+	for idx, connection := range s.replicasConnection {
+		replicasAddresses[idx] = connection.RemoteAddr().String()
 	}
 
 	// Send a message with info to everyone
@@ -120,47 +149,68 @@ func (s *Server) configureReplicas() error {
 	return nil
 }
 
+func (s *Server) startHTTPServer() error {
+	// Set up HTTP server for clients
+	http.Handle("/", s)
+
+	err := http.ListenAndServe(common.ServerAddress+common.ServerPort, nil)
+	if errors.Is(err, http.ErrServerClosed) {
+		common.InfoLogger.Println("Master: closing the server for clients")
+	}
+
+	return err
+}
+
 // Master routine
 func (s *Server) Routine() error {
-	var wg sync.WaitGroup
-
-	var connectionErr error
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		// Conect to all replicas via TC
-		fmt.Println("Master: connect to replicas")
-		connectionErr = s.connectReplicas()
-	}()
-
-	// Broadcast master address to clients
-	fmt.Println("Master: network broadcast")
-	err := s.broadcastNetwork()
+	// Resolve TCP Address
+	address, err := net.ResolveTCPAddr("tcp", common.TCPPort)
 	if err != nil {
 		return err
 	}
 
-	// Wait for all connections
-	wg.Wait()
-	if connectionErr != nil {
-		return connectionErr
+	// Start TCP Listener
+	listener, err := net.ListenTCP("tcp", address)
+	if err != nil {
+		return err
+	}
+
+	// Broadcast master address to clients
+	common.InfoLogger.Println("Master: network broadcast")
+	err = s.broadcastNetwork()
+	if err != nil {
+		return err
+	}
+
+	// Wait for all connections, connect all replicas
+	connectedReplicasAmount := 0
+	for connectedReplicasAmount < s.ReplicasAmount {
+		// Accept connection
+		connection, err := listener.AcceptTCP()
+		if err != nil {
+			return err
+		}
+
+		// Enable Keepalives
+		err = connection.SetKeepAlive(true)
+		if err != nil {
+			return err
+		}
+
+		// Add to slice of replicas connections
+		s.replicasConnection = append(s.replicasConnection, connection)
+		connectedReplicasAmount++
 	}
 
 	// Send replicas their ID and addresses of all replicas (for broadcast)
-	fmt.Println("Master: configure replicas")
+	common.InfoLogger.Println("Master: configure replicas")
 	err = s.configureReplicas()
 	if err != nil {
 		return err
 	}
 
-	// Set up HTTP server for clients
-	http.HandleFunc("/", getRoot)
-
-	err = http.ListenAndServe(common.ServerAddress+common.ServerPort, nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Println("Master: closing the server for clients")
-	}
+	common.InfoLogger.Println("Master: starting HTTP server on " + common.ServerAddress + common.ServerPort)
+	err = s.startHTTPServer()
 
 	return err
 }
