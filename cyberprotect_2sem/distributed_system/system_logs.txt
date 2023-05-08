@@ -1,0 +1,9 @@
+INFO: 2023/05/08 19:44:30.117476 main.go:248: master: initializing
+INFO: 2023/05/08 19:44:30.117567 main.go:281: master: starting routine to receive replicas
+INFO: 2023/05/08 19:44:30.117584 main.go:290: master: start HTTP server, address = 127.0.0.1:8000
+INFO: 2023/05/08 19:44:51.296197 main.go:248: replica: initializing
+INFO: 2023/05/08 19:44:51.296276 main.go:254: replica: receive nodes list from master
+INFO: 2023/05/08 19:44:51.296437 main.go:209: master: got broadcast from replica 172.16.5.4:42300
+INFO: 2023/05/08 19:44:51.296673 main.go:235: master:recent nodes list is {"0":{"Status":0,"Address":"127.0.0.1:8000"},"1":{"Status":0,"Address":"172.16.5.4:42300"}}
+INFO: 2023/05/08 19:44:51.297013 main.go:260: replica: received nodes list succesfully
+INFO: 2023/05/08 19:44:51.297047 main.go:290: replica: start HTTP server, address = 172.16.5.4:42300
