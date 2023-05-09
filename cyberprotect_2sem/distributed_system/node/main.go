@@ -39,7 +39,6 @@ type NodeStatus int
 
 const (
 	Ok   NodeStatus = iota // node is alive and works as expected
-	Down                   // node failed to reply and marked as down, need to sync data from it
 	Dead                   // node is dead and can't execute tasks
 )
 
@@ -432,6 +431,7 @@ func (n *Node) startHTTPServer() error {
 
 				cmd.statusChan <- http.StatusOK
 			case ReadReplicaCommand:
+				updateNodesList := false
 				for {
 					// Choose randomly to whom send this read request
 					aliveReplicas := make([]int, 0)
@@ -461,6 +461,25 @@ func (n *Node) startHTTPServer() error {
 						replicaInfo := n.nodes[replicaId]
 						replicaInfo.Status = Dead
 						n.nodes[replicaId] = replicaInfo
+
+						updateNodesList = true
+					}
+				}
+
+				if updateNodesList {
+					common.InfoLogger.Printf("%s_%d: updating replicas nodes list\n", n.Mode, n.id)
+					binaryBuffer := new(bytes.Buffer)
+					gobobj := gob.NewEncoder(binaryBuffer)
+					gobobj.Encode(n.nodes)
+
+					for idx, info := range n.nodes {
+						if info.Status == Ok && idx != n.id {
+							common.InfoLogger.Printf("%s_%d: sending recent nodes list to replica_%d", n.Mode, n.id, idx)
+							err := n.sendNodeList(idx, binaryBuffer.Bytes())
+							if err != nil {
+								common.ErrorLogger.Printf("%s_%d: failed to send nodes list to replica_%d", n.Mode, n.id, idx)
+							}
+						}
 					}
 				}
 			case WriteReplicaCommand:
