@@ -1,50 +1,14 @@
 package common
 
 import (
-	"bytes"
-	"encoding/gob"
 	"log"
+	"net"
 	"os"
 )
 
 const ServerAddress string = "127.0.0.1"
 const ServerPort int = 8000
 const UDPPort int = 5432
-
-type ReplicaInfoMessage struct {
-	ID        int
-	Addresses []string
-}
-
-type CommandType int
-
-const (
-	Read CommandType = iota
-	Write
-)
-
-type Command struct {
-	Type CommandType
-	Size int
-	Path string
-}
-
-func EncodeCommand(c Command) []byte {
-	binaryBuffer := new(bytes.Buffer)
-	gobobj := gob.NewEncoder(binaryBuffer)
-	gobobj.Encode(c)
-	return binaryBuffer.Bytes()
-}
-
-func DecodeCommand(b []byte) Command {
-	c := Command{}
-
-	ioBuffer := bytes.NewBuffer(b)
-	gobobj := gob.NewDecoder(ioBuffer)
-	gobobj.Decode(&c)
-
-	return c
-}
 
 var (
 	file          *os.File
@@ -66,4 +30,16 @@ func InitLoggers() {
 
 func CloseLoggers() {
 	file.Close()
+}
+
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
 }

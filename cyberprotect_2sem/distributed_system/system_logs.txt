@@ -1,9 +1,43 @@
-INFO: 2023/05/08 19:44:30.117476 main.go:248: master: initializing
-INFO: 2023/05/08 19:44:30.117567 main.go:281: master: starting routine to receive replicas
-INFO: 2023/05/08 19:44:30.117584 main.go:290: master: start HTTP server, address = 127.0.0.1:8000
-INFO: 2023/05/08 19:44:51.296197 main.go:248: replica: initializing
-INFO: 2023/05/08 19:44:51.296276 main.go:254: replica: receive nodes list from master
-INFO: 2023/05/08 19:44:51.296437 main.go:209: master: got broadcast from replica 172.16.5.4:42300
-INFO: 2023/05/08 19:44:51.296673 main.go:235: master:recent nodes list is {"0":{"Status":0,"Address":"127.0.0.1:8000"},"1":{"Status":0,"Address":"172.16.5.4:42300"}}
-INFO: 2023/05/08 19:44:51.297013 main.go:260: replica: received nodes list succesfully
-INFO: 2023/05/08 19:44:51.297047 main.go:290: replica: start HTTP server, address = 172.16.5.4:42300
+INFO: 2023/05/09 19:07:39.430124 main.go:437: master: initializing
+INFO: 2023/05/09 19:07:39.430308 main.go:470: master: starting routine to receive replicas
+INFO: 2023/05/09 19:07:39.430333 main.go:479: master: start HTTP server, address = 192.168.0.169:8000
+INFO: 2023/05/09 19:07:39.430634 main.go:289: master: starting manager routine, waiting for commands
+INFO: 2023/05/09 19:07:40.114034 main.go:437: replica: initializing
+INFO: 2023/05/09 19:07:40.114129 main.go:443: replica: receive nodes list from master
+INFO: 2023/05/09 19:07:40.114254 main.go:399: master: got broadcast from replica 192.168.0.169:60238
+INFO: 2023/05/09 19:07:40.114415 main.go:424: master: recent nodes list is {"0":{"Status":0,"Address":"192.168.0.169:8000"},"1":{"Status":0,"Address":"192.168.0.169:60238"}}
+INFO: 2023/05/09 19:07:40.114548 main.go:449: replica: received nodes list succesfully
+INFO: 2023/05/09 19:07:40.114587 main.go:479: replica: start HTTP server, address = 192.168.0.169:60238
+INFO: 2023/05/09 19:07:40.114709 main.go:289: replica: starting manager routine, waiting for commands
+INFO: 2023/05/09 19:07:40.808695 main.go:437: replica: initializing
+INFO: 2023/05/09 19:07:40.808757 main.go:443: replica: receive nodes list from master
+INFO: 2023/05/09 19:07:40.808869 main.go:399: master: got broadcast from replica 192.168.0.169:50805
+INFO: 2023/05/09 19:07:40.809011 main.go:424: master: recent nodes list is {"0":{"Status":0,"Address":"192.168.0.169:8000"},"1":{"Status":0,"Address":"192.168.0.169:60238"},"2":{"Status":0,"Address":"192.168.0.169:50805"}}
+INFO: 2023/05/09 19:07:40.809132 main.go:449: replica: received nodes list succesfully
+INFO: 2023/05/09 19:07:40.809158 main.go:479: replica: start HTTP server, address = 192.168.0.169:50805
+INFO: 2023/05/09 19:07:40.809257 main.go:289: replica: starting manager routine, waiting for commands
+INFO: 2023/05/09 19:07:41.918639 main.go:276: master: got POST request from 192.168.0.169:47166
+INFO: 2023/05/09 19:07:41.934717 main.go:257: master: adding write replica command to queue
+INFO: 2023/05/09 19:07:41.934803 main.go:292: master: got new command 3
+INFO: 2023/05/09 19:07:41.934849 main.go:202: master: write to http://192.168.0.169:60238/surprise2.ipynb, method POST
+INFO: 2023/05/09 19:07:41.935438 main.go:276: replica: got POST request from 192.168.0.169:55368
+INFO: 2023/05/09 19:07:41.935480 main.go:111: replica: request for storage_r1/surprise2.ipynb
+INFO: 2023/05/09 19:07:41.951259 main.go:141: replica: adding write command to queue
+INFO: 2023/05/09 19:07:41.951316 main.go:292: replica: got new command 2
+INFO: 2023/05/09 19:07:41.959475 main.go:151: replica: got reply from write command
+INFO: 2023/05/09 19:07:41.959753 main.go:202: master: write to http://192.168.0.169:50805/surprise2.ipynb, method POST
+INFO: 2023/05/09 19:07:41.960278 main.go:276: replica: got POST request from 192.168.0.169:41780
+INFO: 2023/05/09 19:07:41.960332 main.go:111: replica: request for storage_r2/surprise2.ipynb
+INFO: 2023/05/09 19:07:41.977564 main.go:141: replica: adding write command to queue
+INFO: 2023/05/09 19:07:41.977612 main.go:292: replica: got new command 2
+INFO: 2023/05/09 19:07:41.982887 main.go:151: replica: got reply from write command
+INFO: 2023/05/09 19:07:41.983226 main.go:267: master: got reply from write replica command
+INFO: 2023/05/09 19:08:04.231454 main.go:276: master: got GET request from 192.168.0.169:38522
+INFO: 2023/05/09 19:08:04.231521 main.go:232: master: adding read replica command to queue
+INFO: 2023/05/09 19:08:04.231549 main.go:292: master: got new command 1
+INFO: 2023/05/09 19:08:04.232312 main.go:276: replica: got GET request from 192.168.0.169:55368
+INFO: 2023/05/09 19:08:04.232410 main.go:111: replica: request for storage_r1/surprise2.ipynb
+INFO: 2023/05/09 19:08:04.232431 main.go:116: replica: adding read command to queue
+INFO: 2023/05/09 19:08:04.232460 main.go:292: replica: got new command 0
+INFO: 2023/05/09 19:08:04.235468 main.go:126: replica: got reply from read command
+INFO: 2023/05/09 19:08:04.252784 main.go:242: master: got reply from read replica command
