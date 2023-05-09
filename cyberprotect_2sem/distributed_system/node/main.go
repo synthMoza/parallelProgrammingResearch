@@ -44,18 +44,29 @@ const (
 )
 
 type NodeInfo struct {
-	Status  NodeStatus
-	Address string
+	Delivered int
+	Status    NodeStatus
+	Address   string
+	Mode      string
+}
+
+type BroadcastMessage struct {
+	Type      NodeCommandType
+	Path      string
+	SenderId  int
+	SenderSeq int
 }
 
 type Node struct {
 	Mode string
 
-	cmds        chan NodeCommand
-	nodes       map[int]NodeInfo
-	id          int
-	storagePath string
-	httpClient  http.Client
+	receiveBuffer []BroadcastMessage
+	sendSeq       int
+	cmds          chan NodeCommand
+	nodes         map[int]NodeInfo
+	id            int
+	storagePath   string
+	httpClient    http.Client
 }
 
 func (n *Node) receiveNodesList() (map[int]NodeInfo, error) {
@@ -108,12 +119,12 @@ func (n *Node) ServeHTTPReplica(w http.ResponseWriter, r *http.Request) {
 	}
 
 	path := filepath.Join(n.storagePath, parsedURL.Path)
-	common.InfoLogger.Printf("%s: request for %s\n", n.Mode, path)
+	common.InfoLogger.Printf("%s_%d: request for %s\n", n.Mode, n.id, path)
 	if r.Method == "GET" {
 		statusChan := make(chan int)
 		dataChan := make(chan []byte)
 
-		common.InfoLogger.Printf("%s: adding read command to queue\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: adding read command to queue\n", n.Mode, n.id)
 		n.cmds <- NodeCommand{
 			Type:       ReadCommand,
 			Path:       path,
@@ -123,33 +134,132 @@ func (n *Node) ServeHTTPReplica(w http.ResponseWriter, r *http.Request) {
 
 		replyStatus := <-statusChan
 		replyData := <-dataChan
-		common.InfoLogger.Printf("%s: got reply from read command\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: got reply from read command\n", n.Mode, n.id)
 
 		w.WriteHeader(replyStatus)
 		w.Write(replyData)
 	} else if r.Method == "POST" {
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
-			common.InfoLogger.Printf("%s: failed to read body from request\n", n.Mode)
+			common.InfoLogger.Printf("%s_%d: failed to read body from request\n", n.Mode, n.id)
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		statusChan := make(chan int)
-		dataChan := make(chan []byte)
+		// BROADCAST RECEIVE
+		senderIdStr := r.Header.Get("id")
+		senderSeqStr := r.Header.Get("sendSeq")
+		senderMode := r.Header.Get("sendMode")
 
-		common.InfoLogger.Printf("%s: adding write command to queue\n", n.Mode)
-		n.cmds <- NodeCommand{
-			Type:       WriteCommand,
-			Path:       path,
-			statusChan: statusChan,
-			dataChan:   dataChan,
+		senderId, err := strconv.Atoi(senderIdStr)
+		if err != nil {
+			// Wrong message, these fields must be included
+			common.WarningLogger.Printf("%s_%d: no required header values in HTTP request\n", n.Mode, n.id)
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		dataChan <- data
-		replyStatus := <-statusChan
-		common.InfoLogger.Printf("%s: got reply from write command\n", n.Mode)
-		w.WriteHeader(replyStatus)
+		senderSeq, err := strconv.Atoi(senderSeqStr)
+		if err != nil {
+			// Wrong message, these fields must be included
+			common.WarningLogger.Printf("%s_%d: no required header values in HTTP request\n", n.Mode, n.id)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		// BROADCAST RECEIVE - broadcast to every other replica
+		if senderMode == "master" {
+			for idx, node := range n.nodes {
+				if node.Status == Ok && node.Mode != "master" && idx != n.id {
+					common.InfoLogger.Printf("%s_%d: broadcasting to replica_%d\n", n.Mode, n.id, idx)
+					n.WriteReplica(idx, parsedURL.Path, data)
+				}
+			}
+		}
+
+		// BROADCAST RECEIVE - Save message to buffer
+		broadcastMessage := BroadcastMessage{
+			Type:      WriteCommand,
+			Path:      path,
+			SenderId:  senderId,
+			SenderSeq: senderSeq,
+		}
+		common.InfoLogger.Printf("%s_%d: got broadcast message; path = %s, sender id = %d, sender seq = %d", n.Mode, n.id, path, senderId, senderSeq)
+		n.receiveBuffer = append(n.receiveBuffer, broadcastMessage)
+
+		// BROADCAST RECEIVE - Check buffer for existing messages
+		hasMessage := true
+		for hasMessage {
+			hasMessage = false
+			for _, msg := range n.receiveBuffer {
+				if n.nodes[msg.SenderId].Delivered == msg.SenderSeq {
+					hasMessage = true
+
+					// BROADCAST RECEIVE - deliver to the application
+					statusChan := make(chan int)
+					dataChan := make(chan []byte)
+
+					common.InfoLogger.Printf("%s_%d: adding write command to queue\n", n.Mode, n.id)
+					n.cmds <- NodeCommand{
+						Type:       msg.Type,
+						Path:       msg.Path,
+						statusChan: statusChan,
+						dataChan:   dataChan,
+					}
+
+					dataChan <- data
+					replyStatus := <-statusChan
+					common.InfoLogger.Printf("%s_%d: got reply from write command\n", n.Mode, n.id)
+					w.WriteHeader(replyStatus)
+
+					nodeInfo := n.nodes[msg.SenderId]
+					nodeInfo.Delivered++
+					n.nodes[msg.SenderId] = nodeInfo
+				}
+			}
+		}
+
+	} else if r.Method == http.MethodPut {
+		// Receive new nodes list from master
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			common.InfoLogger.Printf("%s_%d: failed to read body from request\n", n.Mode, n.id)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		var nodes map[int]NodeInfo
+		ioBuffer := bytes.NewBuffer(data)
+		gobobj := gob.NewDecoder(ioBuffer)
+		gobobj.Decode(&nodes)
+
+		// Add missing nodes or modify nodes that changed status
+		for idx, info := range nodes {
+			if _, ok := n.nodes[idx]; !ok {
+				n.nodes[idx] = NodeInfo{
+					Status:    info.Status,
+					Delivered: 0,
+					Mode:      info.Mode,
+					Address:   info.Address,
+				}
+			} else {
+				if n.nodes[idx].Status != info.Status {
+					tmpInfo := n.nodes[idx]
+					tmpInfo.Status = info.Status
+					n.nodes[idx] = tmpInfo
+				}
+			}
+		}
+
+		w.WriteHeader(http.StatusOK)
+
+		bytes, err := json.Marshal(n.nodes)
+		if err != nil {
+			common.ErrorLogger.Printf("%s_%d: failed to marshall nodes list to JSON", n.Mode, n.id)
+		} else {
+			common.InfoLogger.Printf("%s_%d: recent nodes list is %s\n", n.Mode, n.id, string(bytes))
+		}
+
 	} else {
 		// Unsupported method
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -163,26 +273,26 @@ func (n *Node) ReadReplica(replicaId int, path string) ([]byte, int) {
 	requestURL := fmt.Sprintf("http://%s/%s", n.nodes[replicaId].Address, path)
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		common.ErrorLogger.Printf("%s: couldn't create HTTP request\n", n.Mode)
+		common.ErrorLogger.Printf("%s_%d: couldn't create HTTP request\n", n.Mode, n.id)
 		return replyBody, http.StatusForbidden
 	}
 
 	reply, err := n.httpClient.Do(req)
 	if err != nil {
-		common.ErrorLogger.Printf("%s: replica %s failed to reply\n", n.Mode, n.nodes[replicaId].Address)
+		common.ErrorLogger.Printf("%s_%d: replica %s failed to reply\n", n.Mode, n.id, n.nodes[replicaId].Address)
 		return replyBody, http.StatusForbidden
 	}
 
 	// Some error occured with file
 	if reply.StatusCode != http.StatusOK {
-		common.InfoLogger.Printf("%s: replica %s reply status is not OK\n", n.Mode, n.nodes[replicaId].Address)
+		common.InfoLogger.Printf("%s_%d: replica %s reply status is not OK\n", n.Mode, n.id, n.nodes[replicaId].Address)
 		return replyBody, reply.StatusCode
 	}
 
 	// Read body
 	replyBody, err = io.ReadAll(reply.Body)
 	if err != nil {
-		common.ErrorLogger.Printf("%s: failed to read reply from replica %s\n", n.Mode, n.nodes[replicaId].Address)
+		common.ErrorLogger.Printf("%s_%d: failed to read reply from replica %s\n", n.Mode, n.id, n.nodes[replicaId].Address)
 		return replyBody, http.StatusForbidden
 	}
 
@@ -191,25 +301,36 @@ func (n *Node) ReadReplica(replicaId int, path string) ([]byte, int) {
 
 func (n *Node) WriteReplica(replicaId int, path string, data []byte) int {
 	// Generate a HTTP request to replica
-	requestURL := fmt.Sprintf("http://%s%s", n.nodes[replicaId].Address, path)
-	bodyReader := bytes.NewReader(data)
-	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+	requestURL, err := url.JoinPath("http://"+n.nodes[replicaId].Address, path)
 	if err != nil {
-		common.ErrorLogger.Printf("%s: couldn't create HTTP request\n", n.Mode)
+		common.ErrorLogger.Printf("%s_%d: couldn't create URL: %s\n", n.Mode, n.id, requestURL)
 		return http.StatusForbidden
 	}
 
-	common.InfoLogger.Printf("%s: write to %s, method %s\n", n.Mode, requestURL, http.MethodPost)
+	bodyReader := bytes.NewReader(data)
+	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+	if err != nil {
+		common.ErrorLogger.Printf("%s_%d: couldn't create HTTP request\n", n.Mode, n.id)
+		return http.StatusForbidden
+	}
+
+	// BROADCAST SEND - include Node ID and send sequence in message
+	req.Header.Add("id", strconv.Itoa(n.id))
+	req.Header.Add("sendSeq", strconv.Itoa(n.sendSeq))
+	req.Header.Add("sendMode", n.Mode)
+
+	common.InfoLogger.Printf("%s_%d: write to %s, method %s\n", n.Mode, n.id, requestURL, http.MethodPost)
+	n.sendSeq++ // BROADCAST SEND - increment send sequence
+
 	reply, err := n.httpClient.Do(req)
 	if err != nil {
-		// TODO: choose another replica
-		common.ErrorLogger.Printf("%s: replica %s failed to reply\n", n.Mode, n.nodes[replicaId].Address)
+		common.ErrorLogger.Printf("%s_%d: replica %s failed to reply\n", n.Mode, n.id, n.nodes[replicaId].Address)
 		return http.StatusForbidden
 	}
 
 	// Some error occured with write
 	if reply.StatusCode != http.StatusOK {
-		common.InfoLogger.Printf("%s: replica %s reply status is %d\n", n.Mode, n.nodes[replicaId].Address, reply.StatusCode)
+		common.InfoLogger.Printf("%s_%d: replica %s reply status is %d\n", n.Mode, n.id, n.nodes[replicaId].Address, reply.StatusCode)
 		return reply.StatusCode
 	}
 
@@ -229,7 +350,7 @@ func (n *Node) ServeHTTPMaster(w http.ResponseWriter, r *http.Request) {
 		statusChan := make(chan int)
 		dataChan := make(chan []byte)
 
-		common.InfoLogger.Printf("%s: adding read replica command to queue\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: adding read replica command to queue\n", n.Mode, n.id)
 		n.cmds <- NodeCommand{
 			Type:       ReadReplicaCommand,
 			Path:       parsedURL.Path,
@@ -239,14 +360,14 @@ func (n *Node) ServeHTTPMaster(w http.ResponseWriter, r *http.Request) {
 
 		replyStatus := <-statusChan
 		replyData := <-dataChan
-		common.InfoLogger.Printf("%s: got reply from read replica command\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: got reply from read replica command\n", n.Mode, n.id)
 
 		w.WriteHeader(replyStatus)
 		w.Write(replyData)
 	} else if r.Method == http.MethodPost {
 		reqBody, err := io.ReadAll(r.Body)
 		if err != nil {
-			common.ErrorLogger.Printf("%s: failed to read HTTP request body", n.Mode)
+			common.ErrorLogger.Printf("%s_%d: failed to read HTTP request body", n.Mode, n.id)
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -254,7 +375,7 @@ func (n *Node) ServeHTTPMaster(w http.ResponseWriter, r *http.Request) {
 		statusChan := make(chan int)
 		dataChan := make(chan []byte)
 
-		common.InfoLogger.Printf("%s: adding write replica command to queue\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: adding write replica command to queue\n", n.Mode, n.id)
 		n.cmds <- NodeCommand{
 			Type:       WriteReplicaCommand,
 			Path:       parsedURL.Path,
@@ -264,7 +385,7 @@ func (n *Node) ServeHTTPMaster(w http.ResponseWriter, r *http.Request) {
 
 		dataChan <- reqBody
 		replyStatus := <-statusChan
-		common.InfoLogger.Printf("%s: got reply from write replica command\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: got reply from write replica command\n", n.Mode, n.id)
 		w.WriteHeader(replyStatus)
 	} else {
 		// Unsupported method
@@ -273,7 +394,7 @@ func (n *Node) ServeHTTPMaster(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Node) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	common.InfoLogger.Printf("%s: got %s request from %s\n", n.Mode, r.Method, r.RemoteAddr)
+	common.InfoLogger.Printf("%s_%d: got %s request from %s\n", n.Mode, n.id, r.Method, r.RemoteAddr)
 
 	if n.Mode == "master" {
 		n.ServeHTTPMaster(w, r)
@@ -286,16 +407,16 @@ func (n *Node) startHTTPServer() error {
 	// Launch manager goroutine to read commands and perform them
 	n.cmds = make(chan NodeCommand)
 	go func() {
-		common.InfoLogger.Printf("%s: starting manager routine, waiting for commands\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: starting manager routine, waiting for commands\n", n.Mode, n.id)
 
 		for cmd := range n.cmds {
-			common.InfoLogger.Printf("%s: got new command %d\n", n.Mode, cmd.Type)
+			common.InfoLogger.Printf("%s_%d: got new command %d\n", n.Mode, n.id, cmd.Type)
 
 			switch cmd.Type {
 			case ReadCommand:
 				data, err := os.ReadFile(cmd.Path)
 				if err != nil {
-					common.InfoLogger.Printf("%s: %s not found\n", n.Mode, cmd.Path)
+					common.InfoLogger.Printf("%s_%d: %s not found\n", n.Mode, n.id, cmd.Path)
 					cmd.statusChan <- http.StatusNotFound
 					cmd.dataChan <- []byte{}
 				}
@@ -305,7 +426,7 @@ func (n *Node) startHTTPServer() error {
 			case WriteCommand:
 				err := os.WriteFile(cmd.Path, <-cmd.dataChan, os.ModePerm)
 				if err != nil {
-					common.InfoLogger.Printf("%s: failed to write to %s\n", n.Mode, cmd.Path)
+					common.InfoLogger.Printf("%s_%d: failed to write to %s\n", n.Mode, n.id, cmd.Path)
 					cmd.statusChan <- http.StatusNoContent
 				}
 
@@ -336,7 +457,7 @@ func (n *Node) startHTTPServer() error {
 						break
 					} else {
 						// Replica failed to read - mark it as dead and try again with other replicas
-						common.WarningLogger.Printf("%s: replica with id %d failed to read, marking it as dead\n", n.Mode, replicaId)
+						common.WarningLogger.Printf("%s_%d: replica with id %d failed to read, marking it as dead\n", n.Mode, n.id, replicaId)
 						replicaInfo := n.nodes[replicaId]
 						replicaInfo.Status = Dead
 						n.nodes[replicaId] = replicaInfo
@@ -350,9 +471,9 @@ func (n *Node) startHTTPServer() error {
 					if id != n.id && info.Status == Ok {
 						status := n.WriteReplica(id, cmd.Path, data)
 						if status != http.StatusOK {
-							common.WarningLogger.Printf("%s: replica with id %d failed to write, marking it as dead\n", n.Mode, id)
-							info.Status = Dead
-							n.nodes[id] = info
+							// we will mark replicas as dead only when we an not read from them, hope than some of broadcast will reach them
+							// TODO: check replicas consistency
+							common.WarningLogger.Printf("%s_%d: replica with id %d failed to write\n", n.Mode, n.id, id)
 						} else {
 							successfulWrites++
 						}
@@ -380,6 +501,27 @@ func (n *Node) startHTTPServer() error {
 	return err
 }
 
+func (n *Node) sendNodeList(idx int, list []byte) error {
+	bodyReader := bytes.NewReader(list)
+	req, err := http.NewRequest(http.MethodPut, "http://"+n.nodes[idx].Address, bodyReader)
+	if err != nil {
+		common.ErrorLogger.Printf("%s_%d: couldn't create HTTP request: %s\n", n.Mode, n.id, err.Error())
+		return err
+	}
+
+	reply, err := n.httpClient.Do(req)
+	if err != nil {
+		common.ErrorLogger.Printf("%s_%d: failed to receive reply from replica_%d\n", n.Mode, n.id, idx)
+		return err
+	}
+
+	if reply.StatusCode != http.StatusOK {
+		return errors.New("Bad replica reply")
+	}
+
+	return nil
+}
+
 func (n *Node) receiveReplicas() {
 	pc, err := net.ListenPacket("udp4", ":"+strconv.Itoa(common.UDPPort))
 	if err != nil {
@@ -392,36 +534,49 @@ func (n *Node) receiveReplicas() {
 		buffer := make([]byte, 16)
 		_, address, err := pc.ReadFrom(buffer)
 		if err != nil {
-			common.ErrorLogger.Printf("%s: failed to receive new replica broadcast", n.Mode)
+			common.ErrorLogger.Printf("%s_%d: failed to receive new replica broadcast", n.Mode, n.id)
 			continue
 		}
 
-		common.InfoLogger.Printf("%s: got broadcast from replica %s\n", n.Mode, address.String())
+		common.InfoLogger.Printf("%s_%d: got broadcast from replica %s\n", n.Mode, n.id, address.String())
 		// Add new entry to nodes map
 		newId := len(n.nodes)
 		n.nodes[newId] = NodeInfo{
-			Address: address.String(),
-			Status:  Ok,
+			Address:   address.String(),
+			Status:    Ok,
+			Delivered: 0,
+			Mode:      "replica",
 		}
 
-		// Send new list of nodes
+		// Send new list of nodes to this node via UDP
 		binaryBuffer := new(bytes.Buffer)
 		gobobj := gob.NewEncoder(binaryBuffer)
 		gobobj.Encode(n.nodes)
 
 		_, err = pc.WriteTo(binaryBuffer.Bytes(), address)
 		if err != nil {
-			common.ErrorLogger.Printf("%s: failed to send nodes list to %s", n.Mode, address.String())
+			common.ErrorLogger.Printf("%s_%d: failed to send nodes list to %s", n.Mode, n.id, address.String())
 			continue
+		}
+
+		// Update nodes list on EVERY already connected replicas
+		for idx, info := range n.nodes {
+			if info.Status == Ok && idx != n.id && idx != newId {
+				common.InfoLogger.Printf("%s_%d: sending recent nodes list to replica_%d", n.Mode, n.id, idx)
+				err := n.sendNodeList(idx, binaryBuffer.Bytes())
+				if err != nil {
+					common.ErrorLogger.Printf("%s_%d: failed to send nodes list to replica_%d", n.Mode, n.id, idx)
+				}
+			}
 		}
 
 		bytes, err := json.Marshal(n.nodes)
 		if err != nil {
-			common.ErrorLogger.Printf("%s: failed to marshall nodes list to JSON", n.Mode)
+			common.ErrorLogger.Printf("%s_%d: failed to marshall nodes list to JSON", n.Mode, n.id)
 			continue
 		}
 
-		common.InfoLogger.Printf("%s: recent nodes list is %s\n", n.Mode, string(bytes))
+		common.InfoLogger.Printf("%s_%d: recent nodes list is %s\n", n.Mode, n.id, string(bytes))
 	}
 }
 
@@ -462,21 +617,25 @@ func (n *Node) Init() error {
 
 		n.id = 0
 		n.nodes[0] = NodeInfo{
-			Address: common.GetOutboundIP().String() + ":" + strconv.Itoa(common.ServerPort+n.id),
-			Status:  Ok,
+			Address:   common.GetOutboundIP().String() + ":" + strconv.Itoa(common.ServerPort+n.id),
+			Status:    Ok,
+			Delivered: 0,
+			Mode:      n.Mode,
 		}
 
 		// Run goroutine to listen for UDP broadcasts and connect new clients
-		common.InfoLogger.Printf("%s: starting routine to receive replicas\n", n.Mode)
+		common.InfoLogger.Printf("%s_%d: starting routine to receive replicas\n", n.Mode, n.id)
 		go n.receiveReplicas()
 	}
+
+	n.sendSeq = 0
 
 	// Initialize HTTP client
 	defaultTimeout := 5 * time.Second
 	n.httpClient = http.Client{Timeout: defaultTimeout}
 
 	// Start HTTP server
-	common.InfoLogger.Printf("%s: start HTTP server, address = %s\n", n.Mode, n.nodes[n.id].Address)
+	common.InfoLogger.Printf("%s_%d: start HTTP server, address = %s\n", n.Mode, n.id, n.nodes[n.id].Address)
 	err := n.startHTTPServer()
 	if err != nil {
 		return err

@@ -1,43 +1,81 @@
-INFO: 2023/05/09 19:07:39.430124 main.go:437: master: initializing
-INFO: 2023/05/09 19:07:39.430308 main.go:470: master: starting routine to receive replicas
-INFO: 2023/05/09 19:07:39.430333 main.go:479: master: start HTTP server, address = 192.168.0.169:8000
-INFO: 2023/05/09 19:07:39.430634 main.go:289: master: starting manager routine, waiting for commands
-INFO: 2023/05/09 19:07:40.114034 main.go:437: replica: initializing
-INFO: 2023/05/09 19:07:40.114129 main.go:443: replica: receive nodes list from master
-INFO: 2023/05/09 19:07:40.114254 main.go:399: master: got broadcast from replica 192.168.0.169:60238
-INFO: 2023/05/09 19:07:40.114415 main.go:424: master: recent nodes list is {"0":{"Status":0,"Address":"192.168.0.169:8000"},"1":{"Status":0,"Address":"192.168.0.169:60238"}}
-INFO: 2023/05/09 19:07:40.114548 main.go:449: replica: received nodes list succesfully
-INFO: 2023/05/09 19:07:40.114587 main.go:479: replica: start HTTP server, address = 192.168.0.169:60238
-INFO: 2023/05/09 19:07:40.114709 main.go:289: replica: starting manager routine, waiting for commands
-INFO: 2023/05/09 19:07:40.808695 main.go:437: replica: initializing
-INFO: 2023/05/09 19:07:40.808757 main.go:443: replica: receive nodes list from master
-INFO: 2023/05/09 19:07:40.808869 main.go:399: master: got broadcast from replica 192.168.0.169:50805
-INFO: 2023/05/09 19:07:40.809011 main.go:424: master: recent nodes list is {"0":{"Status":0,"Address":"192.168.0.169:8000"},"1":{"Status":0,"Address":"192.168.0.169:60238"},"2":{"Status":0,"Address":"192.168.0.169:50805"}}
-INFO: 2023/05/09 19:07:40.809132 main.go:449: replica: received nodes list succesfully
-INFO: 2023/05/09 19:07:40.809158 main.go:479: replica: start HTTP server, address = 192.168.0.169:50805
-INFO: 2023/05/09 19:07:40.809257 main.go:289: replica: starting manager routine, waiting for commands
-INFO: 2023/05/09 19:07:41.918639 main.go:276: master: got POST request from 192.168.0.169:47166
-INFO: 2023/05/09 19:07:41.934717 main.go:257: master: adding write replica command to queue
-INFO: 2023/05/09 19:07:41.934803 main.go:292: master: got new command 3
-INFO: 2023/05/09 19:07:41.934849 main.go:202: master: write to http://192.168.0.169:60238/surprise2.ipynb, method POST
-INFO: 2023/05/09 19:07:41.935438 main.go:276: replica: got POST request from 192.168.0.169:55368
-INFO: 2023/05/09 19:07:41.935480 main.go:111: replica: request for storage_r1/surprise2.ipynb
-INFO: 2023/05/09 19:07:41.951259 main.go:141: replica: adding write command to queue
-INFO: 2023/05/09 19:07:41.951316 main.go:292: replica: got new command 2
-INFO: 2023/05/09 19:07:41.959475 main.go:151: replica: got reply from write command
-INFO: 2023/05/09 19:07:41.959753 main.go:202: master: write to http://192.168.0.169:50805/surprise2.ipynb, method POST
-INFO: 2023/05/09 19:07:41.960278 main.go:276: replica: got POST request from 192.168.0.169:41780
-INFO: 2023/05/09 19:07:41.960332 main.go:111: replica: request for storage_r2/surprise2.ipynb
-INFO: 2023/05/09 19:07:41.977564 main.go:141: replica: adding write command to queue
-INFO: 2023/05/09 19:07:41.977612 main.go:292: replica: got new command 2
-INFO: 2023/05/09 19:07:41.982887 main.go:151: replica: got reply from write command
-INFO: 2023/05/09 19:07:41.983226 main.go:267: master: got reply from write replica command
-INFO: 2023/05/09 19:08:04.231454 main.go:276: master: got GET request from 192.168.0.169:38522
-INFO: 2023/05/09 19:08:04.231521 main.go:232: master: adding read replica command to queue
-INFO: 2023/05/09 19:08:04.231549 main.go:292: master: got new command 1
-INFO: 2023/05/09 19:08:04.232312 main.go:276: replica: got GET request from 192.168.0.169:55368
-INFO: 2023/05/09 19:08:04.232410 main.go:111: replica: request for storage_r1/surprise2.ipynb
-INFO: 2023/05/09 19:08:04.232431 main.go:116: replica: adding read command to queue
-INFO: 2023/05/09 19:08:04.232460 main.go:292: replica: got new command 0
-INFO: 2023/05/09 19:08:04.235468 main.go:126: replica: got reply from read command
-INFO: 2023/05/09 19:08:04.252784 main.go:242: master: got reply from read replica command
+INFO: 2023/05/10 02:05:31.146211 main.go:592: master: initializing
+INFO: 2023/05/10 02:05:31.146440 main.go:627: master_0: starting routine to receive replicas
+INFO: 2023/05/10 02:05:31.146469 main.go:638: master_0: start HTTP server, address = 192.168.0.169:8000
+INFO: 2023/05/10 02:05:31.146684 main.go:410: master_0: starting manager routine, waiting for commands
+INFO: 2023/05/10 02:05:32.962548 main.go:592: replica: initializing
+INFO: 2023/05/10 02:05:32.962692 main.go:598: replica: receive nodes list from master
+INFO: 2023/05/10 02:05:32.962963 main.go:541: master_0: got broadcast from replica 192.168.0.169:35141
+INFO: 2023/05/10 02:05:32.963319 main.go:579: master_0: recent nodes list is {"0":{"Delivered":0,"Status":0,"Address":"192.168.0.169:8000","Mode":"master"},"1":{"Delivered":0,"Status":0,"Address":"192.168.0.169:35141","Mode":"replica"}}
+INFO: 2023/05/10 02:05:32.963577 main.go:604: replica: received nodes list succesfully
+INFO: 2023/05/10 02:05:32.963764 main.go:638: replica_1: start HTTP server, address = 192.168.0.169:35141
+INFO: 2023/05/10 02:05:32.963976 main.go:410: replica_1: starting manager routine, waiting for commands
+INFO: 2023/05/10 02:05:34.789119 main.go:592: replica: initializing
+INFO: 2023/05/10 02:05:34.789235 main.go:598: replica: receive nodes list from master
+INFO: 2023/05/10 02:05:34.789421 main.go:541: master_0: got broadcast from replica 192.168.0.169:36175
+INFO: 2023/05/10 02:05:34.789581 main.go:565: master_0: sending recent nodes list to replica_1
+INFO: 2023/05/10 02:05:34.789735 main.go:604: replica: received nodes list succesfully
+INFO: 2023/05/10 02:05:34.789860 main.go:638: replica_2: start HTTP server, address = 192.168.0.169:36175
+INFO: 2023/05/10 02:05:34.790047 main.go:410: replica_2: starting manager routine, waiting for commands
+INFO: 2023/05/10 02:05:34.790273 main.go:397: replica_1: got PUT request from 192.168.0.169:34172
+INFO: 2023/05/10 02:05:34.790330 main.go:122: replica_1: request for storage_r1
+INFO: 2023/05/10 02:05:34.790614 main.go:260: replica_1: recent nodes list is {"0":{"Delivered":0,"Status":0,"Address":"192.168.0.169:8000","Mode":"master"},"1":{"Delivered":0,"Status":0,"Address":"192.168.0.169:35141","Mode":"replica"},"2":{"Delivered":0,"Status":0,"Address":"192.168.0.169:36175","Mode":"replica"}}
+INFO: 2023/05/10 02:05:34.790905 main.go:579: master_0: recent nodes list is {"0":{"Delivered":0,"Status":0,"Address":"192.168.0.169:8000","Mode":"master"},"1":{"Delivered":0,"Status":0,"Address":"192.168.0.169:35141","Mode":"replica"},"2":{"Delivered":0,"Status":0,"Address":"192.168.0.169:36175","Mode":"replica"}}
+INFO: 2023/05/10 02:05:36.258697 main.go:397: master_0: got POST request from 192.168.0.169:33048
+INFO: 2023/05/10 02:05:36.259379 main.go:378: master_0: adding write replica command to queue
+INFO: 2023/05/10 02:05:36.259467 main.go:413: master_0: got new command 3
+INFO: 2023/05/10 02:05:36.259536 main.go:322: master_0: write to http://192.168.0.169:36175/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:05:36.260373 main.go:397: replica_2: got POST request from 192.168.0.169:32812
+INFO: 2023/05/10 02:05:36.260435 main.go:122: replica_2: request for storage_r2/surprise3.ipynb
+INFO: 2023/05/10 02:05:36.260632 main.go:174: replica_2: broadcasting to replica_1
+INFO: 2023/05/10 02:05:36.260690 main.go:322: replica_2: write to http://192.168.0.169:35141/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:05:36.261341 main.go:397: replica_1: got POST request from 192.168.0.169:34174
+INFO: 2023/05/10 02:05:36.261488 main.go:122: replica_1: request for storage_r1/surprise3.ipynb
+INFO: 2023/05/10 02:05:36.261707 main.go:187: replica_1: got broadcast message; path = storage_r1/surprise3.ipynb, sender id = 2, sender seq = 0
+INFO: 2023/05/10 02:05:36.261741 main.go:202: replica_1: adding write command to queue
+INFO: 2023/05/10 02:05:36.261789 main.go:413: replica_1: got new command 2
+INFO: 2023/05/10 02:05:36.262076 main.go:212: replica_1: got reply from write command
+INFO: 2023/05/10 02:05:36.262840 main.go:187: replica_2: got broadcast message; path = storage_r2/surprise3.ipynb, sender id = 0, sender seq = 0
+INFO: 2023/05/10 02:05:36.262926 main.go:202: replica_2: adding write command to queue
+INFO: 2023/05/10 02:05:36.262962 main.go:413: replica_2: got new command 2
+INFO: 2023/05/10 02:05:36.263233 main.go:212: replica_2: got reply from write command
+INFO: 2023/05/10 02:05:36.263584 main.go:322: master_0: write to http://192.168.0.169:35141/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:05:36.263943 main.go:397: replica_1: got POST request from 192.168.0.169:34172
+INFO: 2023/05/10 02:05:36.264007 main.go:122: replica_1: request for storage_r1/surprise3.ipynb
+INFO: 2023/05/10 02:05:36.264170 main.go:174: replica_1: broadcasting to replica_2
+INFO: 2023/05/10 02:05:36.264230 main.go:322: replica_1: write to http://192.168.0.169:36175/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:05:36.264958 main.go:397: replica_2: got POST request from 192.168.0.169:32828
+INFO: 2023/05/10 02:05:36.265052 main.go:122: replica_2: request for storage_r2/surprise3.ipynb
+INFO: 2023/05/10 02:05:36.265239 main.go:187: replica_2: got broadcast message; path = storage_r2/surprise3.ipynb, sender id = 1, sender seq = 0
+INFO: 2023/05/10 02:05:36.265269 main.go:202: replica_2: adding write command to queue
+INFO: 2023/05/10 02:05:36.265294 main.go:413: replica_2: got new command 2
+INFO: 2023/05/10 02:05:36.265607 main.go:212: replica_2: got reply from write command
+INFO: 2023/05/10 02:05:36.265818 main.go:187: replica_1: got broadcast message; path = storage_r1/surprise3.ipynb, sender id = 0, sender seq = 1
+INFO: 2023/05/10 02:05:36.266066 main.go:388: master_0: got reply from write replica command
+INFO: 2023/05/10 02:06:07.549009 main.go:397: master_0: got POST request from 192.168.0.169:34752
+INFO: 2023/05/10 02:06:07.580807 main.go:378: master_0: adding write replica command to queue
+INFO: 2023/05/10 02:06:07.580892 main.go:413: master_0: got new command 3
+INFO: 2023/05/10 02:06:07.580939 main.go:322: master_0: write to http://192.168.0.169:35141/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:06:07.581226 main.go:397: replica_1: got POST request from 192.168.0.169:34172
+INFO: 2023/05/10 02:06:07.581289 main.go:122: replica_1: request for storage_r1/surprise3.ipynb
+INFO: 2023/05/10 02:06:07.610053 main.go:174: replica_1: broadcasting to replica_2
+INFO: 2023/05/10 02:06:07.610199 main.go:322: replica_1: write to http://192.168.0.169:36175/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:06:07.610544 main.go:397: replica_2: got POST request from 192.168.0.169:32828
+INFO: 2023/05/10 02:06:07.610606 main.go:122: replica_2: request for storage_r2/surprise3.ipynb
+INFO: 2023/05/10 02:06:07.641303 main.go:187: replica_2: got broadcast message; path = storage_r2/surprise3.ipynb, sender id = 1, sender seq = 1
+INFO: 2023/05/10 02:06:07.641388 main.go:202: replica_2: adding write command to queue
+INFO: 2023/05/10 02:06:07.641424 main.go:413: replica_2: got new command 2
+INFO: 2023/05/10 02:06:07.657827 main.go:212: replica_2: got reply from write command
+INFO: 2023/05/10 02:06:07.658260 main.go:187: replica_1: got broadcast message; path = storage_r1/surprise3.ipynb, sender id = 0, sender seq = 2
+INFO: 2023/05/10 02:06:07.658725 main.go:322: master_0: write to http://192.168.0.169:36175/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:06:07.659102 main.go:397: replica_2: got POST request from 192.168.0.169:32812
+INFO: 2023/05/10 02:06:07.659156 main.go:122: replica_2: request for storage_r2/surprise3.ipynb
+INFO: 2023/05/10 02:06:07.696800 main.go:174: replica_2: broadcasting to replica_1
+INFO: 2023/05/10 02:06:07.697005 main.go:322: replica_2: write to http://192.168.0.169:35141/surprise3.ipynb, method POST
+INFO: 2023/05/10 02:06:07.697630 main.go:397: replica_1: got POST request from 192.168.0.169:34174
+INFO: 2023/05/10 02:06:07.697747 main.go:122: replica_1: request for storage_r1/surprise3.ipynb
+INFO: 2023/05/10 02:06:07.746549 main.go:187: replica_1: got broadcast message; path = storage_r1/surprise3.ipynb, sender id = 2, sender seq = 1
+INFO: 2023/05/10 02:06:07.746663 main.go:202: replica_1: adding write command to queue
+INFO: 2023/05/10 02:06:07.746739 main.go:413: replica_1: got new command 2
+INFO: 2023/05/10 02:06:07.765411 main.go:212: replica_1: got reply from write command
+INFO: 2023/05/10 02:06:07.765918 main.go:187: replica_2: got broadcast message; path = storage_r2/surprise3.ipynb, sender id = 0, sender seq = 3
+INFO: 2023/05/10 02:06:07.766232 main.go:388: master_0: got reply from write replica command
