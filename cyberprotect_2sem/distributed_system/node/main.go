@@ -176,6 +176,9 @@ func (n *Node) ServeHTTPReplica(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Always reply to message
+		w.WriteHeader(http.StatusOK)
+
 		// BROADCAST RECEIVE - Save message to buffer
 		broadcastMessage := BroadcastMessage{
 			Type:      WriteCommand,
@@ -208,12 +211,14 @@ func (n *Node) ServeHTTPReplica(w http.ResponseWriter, r *http.Request) {
 
 					dataChan <- data
 					replyStatus := <-statusChan
-					common.InfoLogger.Printf("%s_%d: got reply from write command\n", n.Mode, n.id)
-					w.WriteHeader(replyStatus)
+					common.InfoLogger.Printf("%s_%d: got reply from write command, status: %d\n", n.Mode, n.id, replyStatus)
 
 					nodeInfo := n.nodes[msg.SenderId]
 					nodeInfo.Delivered++
 					n.nodes[msg.SenderId] = nodeInfo
+				} else if n.nodes[msg.SenderId].Delivered < msg.SenderSeq {
+					// Message is outdated, reply to it and delete it without action
+
 				}
 			}
 		}
@@ -323,7 +328,7 @@ func (n *Node) WriteReplica(replicaId int, path string, data []byte) int {
 
 	reply, err := n.httpClient.Do(req)
 	if err != nil {
-		common.ErrorLogger.Printf("%s_%d: replica %s failed to reply\n", n.Mode, n.id, n.nodes[replicaId].Address)
+		common.ErrorLogger.Printf("%s_%d: replica %s failed to reply: %s\n", n.Mode, n.id, n.nodes[replicaId].Address, err.Error())
 		return http.StatusForbidden
 	}
 
@@ -484,7 +489,7 @@ func (n *Node) startHTTPServer() error {
 				}
 			case WriteReplicaCommand:
 				// Broadcast write message to everyone
-				successfulWrites := 0
+				// successfulWrites := 0
 				data := <-cmd.dataChan
 				for id, info := range n.nodes {
 					if id != n.id && info.Status == Ok {
@@ -493,18 +498,20 @@ func (n *Node) startHTTPServer() error {
 							// we will mark replicas as dead only when we an not read from them, hope than some of broadcast will reach them
 							// TODO: check replicas consistency
 							common.WarningLogger.Printf("%s_%d: replica with id %d failed to write\n", n.Mode, n.id, id)
-						} else {
-							successfulWrites++
 						}
+						// else {
+						// 	successfulWrites++
+						// }
 					}
 				}
 
-				if successfulWrites > 0 {
-					cmd.statusChan <- http.StatusOK
-				} else {
-					cmd.statusChan <- http.StatusForbidden
-					common.ErrorLogger.Fatalf("%s: no successfull writes to replicas performed", n.Mode)
-				}
+				// if successfulWrites > 0 {
+				// 	cmd.statusChan <- http.StatusOK
+				// } else {
+				// 	cmd.statusChan <- http.StatusForbidden
+				// 	common.ErrorLogger.Fatalf("%s: no successfull writes to replicas performed", n.Mode)
+				// }
+				cmd.statusChan <- http.StatusOK
 			}
 		}
 	}()
