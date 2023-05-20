@@ -170,8 +170,8 @@ func (n *Node) ServeHTTPReplica(w http.ResponseWriter, r *http.Request) {
 		if senderMode == "master" {
 			for idx, node := range n.nodes {
 				if node.Status == Ok && node.Mode != "master" && idx != n.id {
-					common.InfoLogger.Printf("%s_%d: broadcasting to replica_%d\n", n.Mode, n.id, idx)
-					n.WriteReplica(idx, parsedURL.Path, data)
+					common.InfoLogger.Printf("%s_%d: rebroadcasting to replica_%d\n", n.Mode, n.id, idx)
+					n.Rebroadcast(idx, parsedURL.Path, data, senderIdStr, senderSeqStr, n.Mode) // rebroadcast with same id but different mode
 				}
 			}
 		}
@@ -303,6 +303,43 @@ func (n *Node) ReadReplica(replicaId int, path string) ([]byte, int) {
 	return replyBody, http.StatusOK
 }
 
+func (n *Node) Rebroadcast(replicaId int, path string, data []byte, id string, sendSeq string, sendMode string) int {
+	// Generate a HTTP request to replica
+	requestURL, err := url.JoinPath("http://"+n.nodes[replicaId].Address, path)
+	if err != nil {
+		common.ErrorLogger.Printf("%s_%d: couldn't create URL: %s\n", n.Mode, n.id, requestURL)
+		return http.StatusForbidden
+	}
+
+	bodyReader := bytes.NewReader(data)
+	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+	if err != nil {
+		common.ErrorLogger.Printf("%s_%d: couldn't create HTTP request\n", n.Mode, n.id)
+		return http.StatusForbidden
+	}
+
+	// BROADCAST SEND - include Node ID and send sequence in message
+	req.Header.Add("id", id)
+	req.Header.Add("sendSeq", sendSeq)
+	req.Header.Add("sendMode", sendMode)
+
+	common.InfoLogger.Printf("%s_%d: rebroadcast to %s, method %s\n", n.Mode, n.id, requestURL, http.MethodPost)
+
+	reply, err := n.httpClient.Do(req)
+	if err != nil {
+		common.ErrorLogger.Printf("%s_%d: replica %s failed to reply: %s\n", n.Mode, n.id, n.nodes[replicaId].Address, err.Error())
+		return http.StatusForbidden
+	}
+
+	// Some error occured with write
+	if reply.StatusCode != http.StatusOK {
+		common.InfoLogger.Printf("%s_%d: replica %s reply status is %d\n", n.Mode, n.id, n.nodes[replicaId].Address, reply.StatusCode)
+		return reply.StatusCode
+	}
+
+	return http.StatusOK
+}
+
 func (n *Node) WriteReplica(replicaId int, path string, data []byte) int {
 	// Generate a HTTP request to replica
 	requestURL, err := url.JoinPath("http://"+n.nodes[replicaId].Address, path)
@@ -324,7 +361,6 @@ func (n *Node) WriteReplica(replicaId int, path string, data []byte) int {
 	req.Header.Add("sendMode", n.Mode)
 
 	common.InfoLogger.Printf("%s_%d: write to %s, method %s\n", n.Mode, n.id, requestURL, http.MethodPost)
-	n.sendSeq++ // BROADCAST SEND - increment send sequence
 
 	reply, err := n.httpClient.Do(req)
 	if err != nil {
@@ -504,6 +540,8 @@ func (n *Node) startHTTPServer() error {
 						// }
 					}
 				}
+
+				n.sendSeq++ // BROADCAST SEND - increment send sequence
 
 				// if successfulWrites > 0 {
 				// 	cmd.statusChan <- http.StatusOK
